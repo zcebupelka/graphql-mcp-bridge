@@ -1,17 +1,22 @@
-import { buildSchema, GraphQLSchema, parse, validate, execute } from 'graphql';
-import z from 'zod';
+// import { buildSchema, GraphQLSchema, parse, validate, execute, isNonNullType, isListType, isScalarType, isEnumType, isInputObjectType, GraphQLInputObjectType, GraphQLEnumType, GraphQLScalarType, GraphQLType } from 'graphql';
+import pkg from 'graphql';
+const { buildSchema, GraphQLSchema, parse, validate, execute, isNonNullType, isListType, isScalarType, isEnumType, isInputObjectType, GraphQLInputObjectType, GraphQLEnumType, GraphQLScalarType } = pkg;
+import { z } from 'zod';
+import { generateValidationSchemas } from './generate-validation.ts';
 
 export async function schemaParser(graphqlSchema: string) {
     // Parse the schema
-    const schema: GraphQLSchema = buildSchema(graphqlSchema);
+    const schema: pkg.GraphQLSchema = buildSchema(graphqlSchema);
     const operations = extractOperationsFromSchema(schema);
+    const validationSchemas = generateValidationSchemas(operations, schema);
 
     return {
-        operations
+        operations,
+        validationSchemas
     };
 }
 
-function extractOperationsFromSchema(schema: GraphQLSchema) {
+function extractOperationsFromSchema(schema: pkg.GraphQLSchema) {
     const queryType = schema.getQueryType();
     const mutationType = schema.getMutationType();
     const subscriptionType = schema.getSubscriptionType();
@@ -60,12 +65,28 @@ function extractOperationsFromSchema(schema: GraphQLSchema) {
     return operations;
 }
 
-// Generate executable functions for each operation
-export function generateOperationFunctions(operations: any[], endpoint: string) {
+// Generate executable functions for each operation with validation
+export function generateOperationFunctions(
+    operations: any[],
+    endpoint: string,
+    validationSchemas: Record<string, z.ZodSchema>
+) {
     const functions: Record<string, Function> = {};
 
     for (const operation of operations) {
         functions[operation.name] = async (variables: any = {}) => {
+            // Validate input variables using Zod schema
+            const validationSchema = validationSchemas[operation.name];
+            if (validationSchema) {
+                try {
+                    const validatedVariables = validationSchema.parse(variables);
+                    variables = validatedVariables;
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown validation error';
+                    throw new Error(`Validation failed for ${operation.name}: ${errorMessage}`);
+                }
+            }
+
             const query = generateQueryString(operation, variables);
 
             const response = await fetch(endpoint, {
