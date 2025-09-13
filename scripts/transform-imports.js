@@ -1,74 +1,75 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, readdirSync, statSync, unlinkSync } from 'fs';
-import { join, extname } from 'path';
+import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, rmSync, cpSync } from 'fs';
+import { join, extname, dirname, relative } from 'path';
 
-const backupSuffix = '.backup';
+const tempDir = '.temp-build';
 
-function transformImportsToJs(dir, isRestore = false) {
+function copyDirectory(src, dest) {
+    try {
+        cpSync(src, dest, { recursive: true });
+    } catch (err) {
+        console.error(`Failed to copy ${src} to ${dest}:`, err.message);
+    }
+}
+
+function ensureDirectoryExists(dirPath) {
+    try {
+        mkdirSync(dirPath, { recursive: true });
+    } catch (err) {
+        // Directory already exists or other error
+    }
+}
+
+function transformImportsToJs(dir) {
   const files = readdirSync(dir);
 
   for (const file of files) {
     const fullPath = join(dir, file);
     const stat = statSync(fullPath);
 
-    if (stat.isDirectory() && file !== 'node_modules' && file !== 'dist') {
-      transformImportsToJs(fullPath, isRestore);
-    } else if (extname(file) === '.ts' && !file.endsWith('.backup')) {
-      if (isRestore) {
-        const backupPath = fullPath + backupSuffix;
-        try {
-          const backupContent = readFileSync(backupPath, 'utf-8');
-          writeFileSync(fullPath, backupContent);
-          // Don't delete backup files here, we'll do it separately
-        } catch (err) {
-          // Backup doesn't exist, skip
-        }
-      } else {
-        let content = readFileSync(fullPath, 'utf-8');
-
-        // Create backup
-        writeFileSync(fullPath + backupSuffix, content);
+      if (stat.isDirectory() && file !== 'node_modules' && file !== 'dist' && file !== '.temp-build') {
+          transformImportsToJs(fullPath);
+      } else if (extname(file) === '.ts') {
+          let content = readFileSync(fullPath, 'utf-8');
 
         // Transform .ts imports to .js
         content = content.replace(/from ['"]([^'"]+)\.ts['"]/g, "from '$1.js'");
         content = content.replace(/import\s*\(\s*['"]([^'"]+)\.ts['"]\s*\)/g, "import('$1.js')");
 
-        writeFileSync(fullPath, content);
-      }
+            writeFileSync(fullPath, content);
+        }
     }
-  }
 }
 
-function cleanupBackups(dir) {
-  const files = readdirSync(dir);
-
-  for (const file of files) {
-    const fullPath = join(dir, file);
-    const stat = statSync(fullPath);
-
-    if (stat.isDirectory() && file !== 'node_modules' && file !== 'dist') {
-      cleanupBackups(fullPath);
-    } else if (file.endsWith(backupSuffix)) {
-      try {
-        unlinkSync(fullPath);
-      } catch (err) {
-        // Ignore errors
-      }
-    }
+function cleanupTempDir() {
+    try {
+      rmSync(tempDir, { recursive: true, force: true });
+  } catch (err) {
+      // Ignore errors if directory doesn't exist
   }
 }
 
 const command = process.argv[2];
 
 if (command === 'prepare') {
-  transformImportsToJs('./src');
-  console.log('Transformed .ts imports to .js for build');
-} else if (command === 'restore') {
-  transformImportsToJs('./src', true);
-  cleanupBackups('./src');
-  console.log('Restored original .ts imports');
+    // Clean up any existing temp directory
+    cleanupTempDir();
+
+    // Create temp directory and copy src to it
+    ensureDirectoryExists(tempDir);
+    copyDirectory('./src', join(tempDir, 'src'));
+
+    // Transform imports in the temp directory
+    transformImportsToJs(join(tempDir, 'src'));
+
+    console.log('Created temporary build directory with transformed .ts imports to .js');
+} else if (command === 'cleanup') {
+    cleanupTempDir();
+    console.log('Cleaned up temporary build directory');
 } else {
-  console.log('Usage: node scripts/transform-imports.js [prepare|restore]');
+    console.log('Usage: node scripts/transform-imports.js [prepare|cleanup]');
+    console.log('  prepare: Create temp directory with transformed imports');
+    console.log('  cleanup: Remove temp directory');
   process.exit(1);
 }

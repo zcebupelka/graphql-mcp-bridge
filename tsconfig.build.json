@@ -3,7 +3,7 @@
 		"target": "es2020",
 		"module": "es2020",
 		"moduleResolution": "node",
-		"rootDir": "./src",
+		"rootDir": "./.temp-build/src",
 		"outDir": "./dist",
 		"esModuleInterop": true,
 		"resolveJsonModule": true,
@@ -13,6 +13,12 @@
 		"skipLibCheck": true,
 		"allowJs": true
 	},
-	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist", "src/tests"]
+	"include": [
+		".temp-build/src/**/*"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		".temp-build/src/tests"
+	]
 }
