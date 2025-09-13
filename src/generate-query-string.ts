@@ -64,16 +64,21 @@ export function generateQueryString(
 
     // Build field selection string
     const fieldsToSelect = fieldSelection ? buildFieldSelectionString(fieldSelection) : '';
-    const operationCall = fieldsToSelect && fieldsToSelect.trim()
-        ? `${operation.name}(${fieldArgs}) { ${fieldsToSelect} }`
-        : `${operation.name}(${fieldArgs})`;
 
+    // Only include parentheses if there are arguments
+    const fieldArgsStr = fieldArgs ? `(${fieldArgs})` : '';
+    const operationCall = fieldsToSelect && fieldsToSelect.trim()
+        ? `${operation.name}${fieldArgsStr} { ${fieldsToSelect} }`
+        : `${operation.name}${fieldArgsStr}`;
+
+    // Only include parentheses in operation definition if there are arguments
+    const argsStr = args ? `(${args})` : '';
     if (operation.type === 'query') {
-        return `query ${operation.name}(${args}) { ${operationCall} }`;
+        return `query ${operation.name}${argsStr} { ${operationCall} }`;
     } else if (operation.type === 'mutation') {
-        return `mutation ${operation.name}(${args}) { ${operationCall} }`;
+        return `mutation ${operation.name}${argsStr} { ${operationCall} }`;
     } else if (operation.type === 'subscription') {
-        return `subscription ${operation.name}(${args}) { ${operationCall} }`;
+        return `subscription ${operation.name}${argsStr} { ${operationCall} }`;
     }
 
     // This should never be reached due to the union type, but TypeScript requires a return

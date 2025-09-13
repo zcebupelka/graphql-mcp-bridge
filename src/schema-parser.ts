@@ -6,7 +6,7 @@ import { generateQueryString } from './generate-query-string.ts';
 
 export type Tool = {
     name: string;
-    execution: (variables: any) => Promise<{
+    execution: (variables: any, selectedFields: any) => Promise<{
         query: string;
         variables: any;
     }>;
@@ -28,7 +28,7 @@ export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
     for (const operation of operations) {
         const tool: Tool = {
             name: operation.name,
-            execution: async (variables: any = {}) => {
+            execution: async (variables: any = {}, selectedFields: any = {}) => {
                 // Validate input variables using Zod schema
                 const validationSchema = validationSchemas[operation.name];
                 if (validationSchema) {
@@ -41,7 +41,7 @@ export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
                     }
                 }
 
-                const query = generateQueryString(operation, variables);
+                const query = generateQueryString(operation, variables, selectedFields);
 
                 // const response = await fetch(endpoint, {
                 //     method: 'POST',
