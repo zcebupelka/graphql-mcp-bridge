@@ -1,22 +1,67 @@
 name: Publish Package
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version-changed: ${{ steps.version-check.outputs.changed }}
+      version: ${{ steps.version-check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check if version changed
+        id: version-check
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+
+          # Check if this is the first commit or get previous version
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            git checkout HEAD~1 -- package.json || echo "No previous package.json found"
+            if [ -f package.json ]; then
+              PREVIOUS_VERSION=$(node -p "require('./package.json').version")
+              git checkout HEAD -- package.json
+              echo "Previous version: $PREVIOUS_VERSION"
+
+              if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+                echo "Version changed from $PREVIOUS_VERSION to $CURRENT_VERSION"
+                echo "changed=true" >> $GITHUB_OUTPUT
+                echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+              else
+                echo "Version unchanged"
+                echo "changed=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "No previous package.json found, treating as new version"
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "First commit, treating as new version"
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          fi
+
   publish:
+    needs: check-version
+    if: needs.check-version.outputs.version-changed == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@pshaddel'
+          registry-url: 'https://registry.npmjs.org'
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -27,7 +72,14 @@ jobs:
         run: pnpm test
       - name: Build package
         run: pnpm run build
-      - name: Publish to GitHub Packages
+      - name: Publish to npm
         run: pnpm publish --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Create Release Tag
+        run: |
+          VERSION=${{ needs.check-version.outputs.version }}
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
