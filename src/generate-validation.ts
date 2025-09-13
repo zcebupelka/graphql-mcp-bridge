@@ -60,7 +60,11 @@ function graphqlTypeToZodSchema(
                 return z.enum(values as [string, ...string[]]);
             } catch (enumError) {
                 console.warn(`Failed to create Zod enum for ${type.name}:`, enumError);
-                return z.union(values.map(v => z.literal(v)) as [z.ZodLiteral<string>, ...z.ZodLiteral<string>[]]);
+                const literals = values.map(v => z.literal(v));
+                if (literals.length === 1) {
+                    return literals[0];
+                }
+                return z.union([literals[0], literals[1], ...literals.slice(2)] as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
             }
         } catch (error) {
             console.warn(`Error processing enum ${type.name}:`, error);

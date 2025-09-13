@@ -10,9 +10,9 @@ export type Tool = {
         query: string;
         variables: any;
     }>;
-    description?: string;
-    inputSchema?: z.ZodTypeAny;
-    outputSchema?: z.ZodTypeAny;
+    description: string;
+    inputSchema: z.ZodType<any, any, any>;
+    outputSchema: z.ZodType<any, any, any>;
 };
 
 export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
@@ -81,8 +81,8 @@ export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
                 return { query, variables };
             },
             description: `GraphQL ${operation.type} operation: ${operation.name}`,
-            inputSchema: validationSchemas[operation.name],
-            outputSchema: outputSelectionSchemas[operation.name]
+            inputSchema: validationSchemas[operation.name] || z.object({}),
+            outputSchema: outputSelectionSchemas[operation.name] || z.object({})
         };
 
         tools.push(tool);
@@ -97,6 +97,7 @@ function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
     const subscriptionType = schema.getSubscriptionType();
 
     const operations: any[] = [];
+    const operationsSet = new Set<string>();
 
     // Helper function to convert GraphQL field args to our OperationArg format
     const transformArgs = (fieldArgs: readonly graphql.GraphQLArgument[]) => {
@@ -110,6 +111,11 @@ function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
     if (queryType) {
         const fields = queryType.getFields();
         for (const [fieldName, field] of Object.entries(fields)) {
+            const uniqueName = `query-${fieldName}`;
+            if (operationsSet.has(uniqueName)) {
+                continue; // Skip duplicate operation names
+            }
+            operationsSet.add(uniqueName);
             operations.push({
                 type: 'query',
                 name: fieldName,
@@ -123,6 +129,11 @@ function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
     if (mutationType) {
         const fields = mutationType.getFields();
         for (const [fieldName, field] of Object.entries(fields)) {
+            const uniqueName = `mutation-${fieldName}`;
+            if (operationsSet.has(uniqueName)) {
+                continue; // Skip duplicate operation names
+            }
+            operationsSet.add(uniqueName);
             operations.push({
                 type: 'mutation',
                 name: fieldName,
@@ -136,6 +147,11 @@ function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
     if (subscriptionType) {
         const fields = subscriptionType.getFields();
         for (const [fieldName, field] of Object.entries(fields)) {
+            const uniqueName = `subscription-${fieldName}`;
+            if (operationsSet.has(uniqueName)) {
+                continue; // Skip duplicate operation names
+            }
+            operationsSet.add(uniqueName);
             operations.push({
                 type: 'subscription',
                 name: fieldName,

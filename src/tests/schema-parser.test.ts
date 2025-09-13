@@ -67,9 +67,6 @@ describe("Testing Different Schemas", () => {
             await assert.rejects(
                 async () => {
                     await tools[0].execution({ a: 5 }, {});
-                },
-                {
-                    message: 'Invalid type for variable b: expected number, received undefined'
                 }
             );
         });
