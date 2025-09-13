@@ -1,20 +1,36 @@
 {
-  "name": "graphql-mcp-bridge",
+  "name": "@pshaddel/graphql-mcp-bridge",
   "version": "1.0.0",
-  "description": "Converts GraphQL Schema to MCP Functions",
+  "description": "A bridge implementation connecting GraphQL APIs with the Model Context Protocol (MCP), enabling seamless integration between GraphQL services and MCP-compatible AI systems",
   "keywords": [
     "graphql",
     "mcp",
-    "mcp-bridge"
+    "model-context-protocol",
+    "bridge",
+    "api-integration",
+    "typescript",
+    "nodejs",
+    "ai-tools",
+    "data-bridge",
+    "graphql-client",
+    "mcp-server"
   ],
   "license": "ISC",
   "author": "Poorshad Shaddel",
   "type": "module",
-  "main": "src/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=24.0.0"
   },
   "scripts": {
+    "build": "node scripts/transform-imports.js prepare && tsc --project tsconfig.build.json && node scripts/transform-imports.js restore",
+    "prepublishOnly": "npm run build",
     "test": "node --test src/tests/*.test.ts",
     "test:watch": "node --test --watch src/tests/*.test.ts",
     "test:coverage": "NODE_ENV=test c8 node --test src/tests/*.test.ts",
@@ -23,6 +39,13 @@
     "format:check": "biome check",
     "format": "biome format --write --fix",
     "type-check": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pshaddel/graphql-mcp-bridge.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "devDependencies": {
     "@types/node": "^24.3.3",
