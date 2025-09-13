@@ -24,15 +24,29 @@ function buildFieldSelectionString(selection: FieldSelection): string {
             // Skip fields that are explicitly set to false
             continue;
         } else if (typeof value === 'object' && value !== null) {
-            // Nested object selection
-            const nestedFields = buildFieldSelectionString(value);
-            if (nestedFields) {
-                fields.push(`${fieldName} { ${nestedFields} }`);
+            // Check if this is an inline fragment (type name starting with uppercase)
+            if (isTypeName(fieldName)) {
+                const nestedFields = buildFieldSelectionString(value);
+                if (nestedFields) {
+                    fields.push(`... on ${fieldName} { ${nestedFields} }`);
+                }
+            } else {
+                // Regular nested object selection
+                const nestedFields = buildFieldSelectionString(value);
+                if (nestedFields) {
+                    fields.push(`${fieldName} { ${nestedFields} }`);
+                }
             }
         }
     }
 
     return fields.join(' ');
+}
+
+// Helper function to determine if a field name is likely a GraphQL type name
+// Type names in GraphQL conventionally start with an uppercase letter
+function isTypeName(fieldName: string): boolean {
+    return /^[A-Z]/.test(fieldName);
 }
 
 export function generateQueryString(

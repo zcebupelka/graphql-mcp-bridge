@@ -116,7 +116,7 @@ describe('generateQueryString', () => {
         };
 
         const result = generateQueryString(noArgsOperation, {}, fieldSelection);
-        assert.strictEqual(result, 'query getAllUsers() { getAllUsers() { id username } }');
+        assert.strictEqual(result, 'query getAllUsers { getAllUsers { id username } }');
     });
 
     test('throws error for unknown operation type', () => {
@@ -368,5 +368,132 @@ describe('generateQueryString', () => {
 
         const result = generateQueryString(mixedOperation, partialVariables);
         assert.strictEqual(result, 'query searchUsers($query: String!, $limit: Int, $includeInactive: Boolean!, $sortBy: String) { searchUsers(query: $query, limit: $limit, includeInactive: $includeInactive, sortBy: $sortBy) }');
+    });
+
+    test('handles inline fragments for union types', () => {
+        const unionOperation = {
+            name: 'getPet',
+            type: 'query' as const,
+            args: [
+                { name: 'id', type: 'ID!' }
+            ]
+        };
+
+        const fieldSelection = {
+            __typename: true,
+            Dog: {
+                id: true,
+                name: true,
+                breed: true
+            },
+            Cat: {
+                id: true,
+                name: true,
+                color: true
+            }
+        };
+
+        const result = generateQueryString(unionOperation, { id: '123' }, fieldSelection);
+        assert.strictEqual(result, 'query getPet($id: ID!) { getPet(id: $id) { __typename ... on Dog { id name breed } ... on Cat { id name color } } }');
+    });
+
+    test('handles inline fragments for interface types', () => {
+        const interfaceOperation = {
+            name: 'getNode',
+            type: 'query' as const,
+            args: [
+                { name: 'id', type: 'ID!' }
+            ]
+        };
+
+        const fieldSelection = {
+            id: true,
+            User: {
+                email: true,
+                username: true
+            },
+            Post: {
+                title: true,
+                content: true
+            }
+        };
+
+        const result = generateQueryString(interfaceOperation, { id: '456' }, fieldSelection);
+        assert.strictEqual(result, 'query getNode($id: ID!) { getNode(id: $id) { id ... on User { email username } ... on Post { title content } } }');
+    });
+
+    test('handles mixed regular fields and inline fragments', () => {
+        const operation = {
+            name: 'getSearchResult',
+            type: 'query' as const,
+            args: [
+                { name: 'query', type: 'String!' }
+            ]
+        };
+
+        const fieldSelection = {
+            __typename: true,
+            totalCount: true,
+            results: {
+                Article: {
+                    title: true,
+                    author: {
+                        name: true
+                    }
+                },
+                Video: {
+                    title: true,
+                    duration: true
+                }
+            }
+        };
+
+        const result = generateQueryString(operation, { query: 'test' }, fieldSelection);
+        assert.strictEqual(result, 'query getSearchResult($query: String!) { getSearchResult(query: $query) { __typename totalCount results { ... on Article { title author { name } } ... on Video { title duration } } } }');
+    });
+
+    test('distinguishes between type names and regular fields', () => {
+        const operation = {
+            name: 'getExample',
+            type: 'query' as const,
+            args: []
+        };
+
+        const fieldSelection = {
+            id: true,
+            name: true,
+            // Regular nested field (lowercase)
+            metadata: {
+                created: true,
+                updated: true
+            },
+            // Type name (uppercase - should be inline fragment)
+            SpecialType: {
+                specialField: true
+            }
+        };
+
+        const result = generateQueryString(operation, {}, fieldSelection);
+        assert.strictEqual(result, 'query getExample { getExample { id name metadata { created updated } ... on SpecialType { specialField } } }');
+    });
+
+    test('handles empty inline fragments', () => {
+        const operation = {
+            name: 'getUnion',
+            type: 'query' as const,
+            args: []
+        };
+
+        const fieldSelection = {
+            __typename: true,
+            TypeA: {},
+            TypeB: {
+                field1: true
+            }
+        };
+
+        const result = generateQueryString(operation, {}, fieldSelection);
+        // Empty inline fragments should not appear in output
+        assert.strictEqual(result, 'query getUnion { getUnion { __typename ... on TypeB { field1 } } }');
     });
 });
