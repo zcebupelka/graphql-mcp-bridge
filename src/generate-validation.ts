@@ -3,13 +3,17 @@ const { buildSchema, GraphQLSchema, parse, validate, execute, isNonNullType, isL
 import { z } from 'zod';
 
 // Helper function to convert GraphQL type to Zod schema
-function graphqlTypeToZodSchema(type: pkg.GraphQLType, schema: pkg.GraphQLSchema): z.ZodTypeAny {
+function graphqlTypeToZodSchema(
+    type: pkg.GraphQLType,
+    schema: pkg.GraphQLSchema,
+    visitedTypes: Set<string> = new Set()
+): z.ZodTypeAny {
     if (isNonNullType(type)) {
-        return graphqlTypeToZodSchema(type.ofType, schema);
+        return graphqlTypeToZodSchema(type.ofType, schema, visitedTypes);
     }
 
     if (isListType(type)) {
-        const itemSchema = graphqlTypeToZodSchema(type.ofType, schema);
+        const itemSchema = graphqlTypeToZodSchema(type.ofType, schema, visitedTypes);
         return z.array(itemSchema);
     }
 
@@ -31,26 +35,71 @@ function graphqlTypeToZodSchema(type: pkg.GraphQLType, schema: pkg.GraphQLSchema
     }
 
     if (isEnumType(type)) {
-        const values = type.getValues().map(value => value.value);
-        return z.enum(values as [string, ...string[]]);
+        try {
+            // Prevent circular references
+            if (visitedTypes.has(type.name)) {
+                return z.string(); // fallback for circular enum references
+            }
+
+            visitedTypes.add(type.name);
+
+            const values = type.getValues().map(value => value.value);
+
+            // Handle empty enum case
+            if (values.length === 0) {
+                return z.string();
+            }
+
+            // Handle single value enum case
+            if (values.length === 1) {
+                return z.literal(values[0]);
+            }
+
+            // Try to create the enum, but fallback if it fails
+            try {
+                return z.enum(values as [string, ...string[]]);
+            } catch (enumError) {
+                console.warn(`Failed to create Zod enum for ${type.name}:`, enumError);
+                return z.union(values.map(v => z.literal(v)) as [z.ZodLiteral<string>, ...z.ZodLiteral<string>[]]);
+            }
+        } catch (error) {
+            console.warn(`Error processing enum ${type.name}:`, error);
+            return z.string(); // fallback
+        } finally {
+            visitedTypes.delete(type.name);
+        }
     }
 
     if (isInputObjectType(type)) {
-        const fields = type.getFields();
-        const zodObject: Record<string, z.ZodTypeAny> = {};
-
-        for (const [fieldName, field] of Object.entries(fields)) {
-            let fieldSchema = graphqlTypeToZodSchema(field.type, schema);
-
-            // Make field optional if it's nullable
-            if (!isNonNullType(field.type)) {
-                fieldSchema = fieldSchema.optional();
-            }
-
-            zodObject[fieldName] = fieldSchema;
+        // Prevent circular references
+        if (visitedTypes.has(type.name)) {
+            return z.object({}).optional(); // fallback for circular references
         }
 
-        return z.object(zodObject);
+        visitedTypes.add(type.name);
+
+        try {
+            const fields = type.getFields();
+            const zodObject: Record<string, z.ZodTypeAny> = {};
+
+            for (const [fieldName, field] of Object.entries(fields)) {
+                let fieldSchema = graphqlTypeToZodSchema(field.type, schema, visitedTypes);
+
+                // Make field optional if it's nullable
+                if (!isNonNullType(field.type)) {
+                    fieldSchema = fieldSchema.optional();
+                }
+
+                zodObject[fieldName] = fieldSchema;
+            }
+
+            return z.object(zodObject);
+        } catch (error) {
+            console.warn(`Error processing input object ${type.name}:`, error);
+            return z.object({}).optional(); // fallback
+        } finally {
+            visitedTypes.delete(type.name);
+        }
     }
 
     // Fallback for other types
@@ -66,7 +115,7 @@ export function generateValidationSchemas(operations: any[], schema: pkg.GraphQL
             const zodObject: Record<string, z.ZodTypeAny> = {};
 
             for (const arg of operation.args) {
-                let argSchema = graphqlTypeToZodSchema(arg.type, schema);
+                let argSchema = graphqlTypeToZodSchema(arg.type, schema, new Set());
 
                 // Make argument optional if it's nullable
                 if (!isNonNullType(arg.type)) {
