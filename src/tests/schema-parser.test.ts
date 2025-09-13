@@ -69,7 +69,7 @@ describe("Testing Different Schemas", () => {
                     await tools[0].execution({ a: 5 }, {});
                 },
                 {
-                    message: /Missing required variable: b/
+                    message: 'Invalid type for variable b: expected number, received undefined'
                 }
             );
         });

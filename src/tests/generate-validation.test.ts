@@ -7,7 +7,7 @@ import { validateOperationArguments } from '../generate-validation.ts';
 
 type Tool = {
     name: string;
-    execution: (variables: any) => Promise<{
+    execution: (variables: any, selectedFields: any) => Promise<{
         query: string;
         variables: any;
     }>;
@@ -150,7 +150,7 @@ describe('GraphQL Zod Validation', () => {
         assert.ok(userTool);
 
         // Test successful execution
-        const result = await userTool.execution({ id: '123' });
+        const result = await userTool.execution({ id: '123' }, { id: true, username: true });
         assert.ok(result.query);
         assert.ok(result.variables);
         assert.strictEqual(result.variables.id, '123');
@@ -167,6 +167,8 @@ describe('GraphQL Zod Validation', () => {
                 username: 'john_doe',
                 email: 'john@example.com'
             }
+        }, {
+            id: true
         });
         assert.ok(validResult.query);
         assert.ok(validResult.variables);
@@ -178,7 +180,7 @@ describe('GraphQL Zod Validation', () => {
                     username: 'john_doe'
                     // Missing required email
                 }
-            });
+            }, { id: true });
         }, /Validation failed/);
     });
 

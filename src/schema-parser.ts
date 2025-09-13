@@ -36,6 +36,30 @@ export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
                         const validatedVariables = validationSchema.parse(variables);
                         variables = validatedVariables;
                     } catch (error) {
+                        // Parse Zod error to provide more user-friendly error messages
+                        if (error && typeof error === 'object' && 'issues' in error) {
+                            const zodError = error as any;
+                            const issues = zodError.issues || [];
+
+                            // Check for missing required fields first
+                            for (const issue of issues) {
+                                if (issue.code === 'invalid_type' && issue.received === 'undefined') {
+                                    const fieldName = issue.path[0];
+                                    throw new Error(`Missing required variable: ${fieldName}`);
+                                }
+                            }
+
+                            // Check for invalid types (but not missing fields)
+                            for (const issue of issues) {
+                                if (issue.code === 'invalid_type' && issue.received !== 'undefined') {
+                                    const fieldName = issue.path[0];
+                                    const expected = issue.expected;
+                                    const received = issue.received;
+                                    throw new Error(`Invalid type for variable ${fieldName}: expected ${expected}, received ${received}`);
+                                }
+                            }
+                        }
+
                         const errorMessage = error instanceof Error ? error.message : 'Unknown validation error';
                         throw new Error(`Validation failed for ${operation.name}: ${errorMessage}`);
                     }
@@ -78,7 +102,7 @@ function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
     const transformArgs = (fieldArgs: readonly graphql.GraphQLArgument[]) => {
         return fieldArgs.map(arg => ({
             name: arg.name,
-            type: arg.type.toString() // Convert GraphQL type to string representation
+            type: arg.type // Keep the actual GraphQL type object for validation
         }));
     };
 
