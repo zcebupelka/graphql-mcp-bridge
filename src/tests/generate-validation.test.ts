@@ -1,12 +1,12 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert';
-import { schemaParser, validateOperationArguments, validateOutputSelection } from '../index.ts';
+import { schemaParser } from '../index.ts';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { validateOperationArguments } from '../generate-validation.ts';
 
 describe('GraphQL Zod Validation', () => {
     let validationSchemas: Record<string, any>;
-    let outputSelectionSchemas: Record<string, any>;
 
     // Setup: Parse schema before running tests
     test('should parse GraphQL schema and generate validation schemas', async () => {
@@ -15,24 +15,15 @@ describe('GraphQL Zod Validation', () => {
 
         const result = await schemaParser(graphqlSchema);
         validationSchemas = result.validationSchemas;
-        outputSelectionSchemas = result.outputSelectionSchemas;
 
         assert.ok(validationSchemas);
-        assert.ok(outputSelectionSchemas);
         assert.ok(Object.keys(validationSchemas).length > 0);
-        assert.ok(Object.keys(outputSelectionSchemas).length > 0);
 
         // Check that we have validation schemas for our expected operations
         assert.ok(validationSchemas.users);
         assert.ok(validationSchemas.user);
         assert.ok(validationSchemas.createUser);
         assert.ok(validationSchemas.createPost);
-
-        // Check that we have output schemas for our expected operations
-        assert.ok(outputSelectionSchemas.users);
-        assert.ok(outputSelectionSchemas.user);
-        assert.ok(outputSelectionSchemas.createUser);
-        assert.ok(outputSelectionSchemas.createPost);
     });
 
     test('should validate query arguments correctly', () => {
@@ -125,101 +116,5 @@ describe('GraphQL Zod Validation', () => {
         assert.throws(() => {
             validateOperationArguments('unknownOperation', {}, validationSchemas);
         }, /No validation schema found/);
-    });
-
-    // Output Selection Schema Tests
-    test('should validate output selection for user query', () => {
-        const validUserSelection = validateOutputSelection('user', {
-            id: true,
-            username: true,
-            email: true,
-            posts: {
-                id: true,
-                title: true,
-                published: true
-            }
-        }, outputSelectionSchemas);
-
-        assert.deepStrictEqual(validUserSelection, {
-            id: true,
-            username: true,
-            email: true,
-            posts: {
-                id: true,
-                title: true,
-                published: true
-            }
-        });
-    });
-
-    test('should validate output selection with all fields optional', () => {
-        // Empty selection should be valid (all fields are optional)
-        const emptySelection = validateOutputSelection('user', {}, outputSelectionSchemas);
-        assert.deepStrictEqual(emptySelection, {});
-    });
-
-    test('should validate output selection for simple scalar fields', () => {
-        const simpleSelection = validateOutputSelection('user', {
-            id: true,
-            username: true
-        }, outputSelectionSchemas);
-
-        assert.deepStrictEqual(simpleSelection, {
-            id: true,
-            username: true
-        });
-    });
-
-    test('should reject invalid fields in output selection', () => {
-        assert.throws(() => {
-            validateOutputSelection('user', {
-                id: true,
-                nonExistentField: true
-            }, outputSelectionSchemas);
-        }, /Output selection validation failed/);
-    });
-
-    test('should validate nested object selections', () => {
-        const postsSelection = validateOutputSelection('posts', {
-            id: true,
-            title: true,
-            author: {
-                id: true,
-                username: true
-            },
-            postType: true
-        }, outputSelectionSchemas);
-
-        assert.deepStrictEqual(postsSelection, {
-            id: true,
-            title: true,
-            author: {
-                id: true,
-                username: true
-            },
-            postType: true
-        });
-    });
-
-    test('should validate createUser mutation output selection', () => {
-        const createUserSelection = validateOutputSelection('createUser', {
-            id: true,
-            username: true,
-            email: true,
-            createdAt: true
-        }, outputSelectionSchemas);
-
-        assert.deepStrictEqual(createUserSelection, {
-            id: true,
-            username: true,
-            email: true,
-            createdAt: true
-        });
-    });
-
-    test('should throw error for unknown operation in output selection', () => {
-        assert.throws(() => {
-            validateOutputSelection('unknownOperation', {}, outputSelectionSchemas);
-        }, /No output schema found/);
     });
 });

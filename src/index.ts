@@ -2,17 +2,27 @@
 import pkg from 'graphql';
 const { buildSchema, GraphQLSchema, parse, validate, execute, isNonNullType, isListType, isScalarType, isEnumType, isInputObjectType, GraphQLInputObjectType, GraphQLEnumType, GraphQLScalarType } = pkg;
 import { z } from 'zod';
-import { generateValidationSchemas } from './generate-validation.ts';
+import { generateValidationSchemas, generateOutputSelectionSchemas, validateOperationArguments, validateOutputSelection } from './generate-validation.ts';
+import { generateQueryString } from './generate-query-string.ts';
+
+type Tool = {
+    name: string;
+    func: Function;
+    description?: string;
+    inputSchema?: z.ZodTypeAny;
+};
 
 export async function schemaParser(graphqlSchema: string) {
     // Parse the schema
     const schema: pkg.GraphQLSchema = buildSchema(graphqlSchema);
     const operations = extractOperationsFromSchema(schema);
     const validationSchemas = generateValidationSchemas(operations, schema);
+    const outputSelectionSchemas = generateOutputSelectionSchemas(operations, schema);
 
     return {
         operations,
-        validationSchemas
+        validationSchemas,
+        outputSelectionSchemas
     };
 }
 
@@ -107,15 +117,5 @@ export function generateOperationFunctions(
     return functions;
 }
 
-function generateQueryString(operation: any, variables: any) {
-    const args = operation.args.map((arg: any) => `$${arg.name}: ${arg.type}`).join(', ');
-    const fieldArgs = operation.args.map((arg: any) => `${arg.name}: $${arg.name}`).join(', ');
-
-    if (operation.type === 'query') {
-        return `query ${operation.name}(${args}) { ${operation.name}(${fieldArgs}) }`;
-    } else if (operation.type === 'mutation') {
-        return `mutation ${operation.name}(${args}) { ${operation.name}(${fieldArgs}) }`;
-    } else if (operation.type === 'subscription') {
-        return `subscription ${operation.name}(${args}) { ${operation.name}(${fieldArgs}) }`;
-    }
-}
+// Re-export validation functions for convenience
+export { validateOperationArguments, validateOutputSelection };
