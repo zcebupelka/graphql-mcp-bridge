@@ -1,0 +1,16 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+    patch:
+      default:
+        target: 80%
+
+ignore:
+  - "src/tests/**"
+  - "**/*.test.js"
+  - "**/*.test.ts"
+  - "node_modules/**/*"
+  - "coverage/**/*"

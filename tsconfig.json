@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "es6",
+		"module": "commonjs",
+		"rootDir": "./src",
+		"outDir": "./dist",
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"moduleResolution": "node",
+		"strict": true,
+		"sourceMap": true,
+        "noEmit": true,
+        "skipLibCheck": true,
+        "allowImportingTsExtensions": true,
+		"allowJs": true // Allows TypeScript to process JavaScript files
+	},
+	"include": ["src/**/*"],
+	"exclude": ["node_modules"]
+}
