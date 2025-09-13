@@ -388,4 +388,159 @@ describe("Testing Different Schemas", () => {
             );
         });
     });
+
+    describe("Schema 9 - Test input validation and output selector with complex types", () => {
+        const schema = `
+        enum Status {
+            ACTIVE
+            INACTIVE
+            PENDING
+        }
+
+        input FilterInput {
+            status: Status
+            tags: [String!]
+            range: RangeInput
+        }
+
+        input RangeInput {
+            start: Int!
+            end: Int!
+        }
+
+        type Item {
+            id: ID!
+            name: String!
+            status: Status!
+            tags: [String!]!
+            details: Details
+        }
+
+        type Details {
+            description: String
+            createdAt: String!
+            updatedAt: String
+        }
+
+        type Query {
+            getItems(filter: FilterInput): [Item!]!
+        }
+        `;
+
+        test("should validate complex input types and generate correct query", async () => {
+            const tools = await schemaParser(schema);
+
+            const getItemsTool = tools.find(tool => tool.name === "getItems");
+            assert.ok(getItemsTool);
+
+            // Valid input
+            const result = await getItemsTool.execution({
+                filter: {
+                    status: "ACTIVE",
+                    tags: ["tag1", "tag2"],
+                    range: { start: 10, end: 50 }
+                }
+            }, {
+                id: true, name: true, status: true, details: { description: true, createdAt: true }
+            });
+
+            assert.strictEqual(
+                result.query.trim(),
+                "query getItems($filter: FilterInput) { getItems(filter: $filter) { id name status details { description createdAt } } }"
+            );
+
+            // Invalid input - wrong enum value
+            await assert.rejects(
+                async () => {
+                    await getItemsTool.execution({
+                        filter: {
+                            status: "UNKNOWN", // Invalid enum value
+                            tags: ["tag1"],
+                            range: { start: 5, end: 15 }
+                        }
+                    }, { id: true });
+                }
+            );
+
+            // Invalid input - missing required field in nested input
+            await assert.rejects(
+                async () => {
+                    await getItemsTool.execution({
+                        filter: {
+                            status: "ACTIVE",
+                            tags: ["tag1"],
+                            range: { start: 5 }
+                        }
+                    }, { id: true });
+                }
+            );
+
+            const inputSchema = getItemsTool.inputSchema;
+            assert.ok(inputSchema);
+
+            // Directly test input schema validation
+            await assert.rejects(async () => {
+                inputSchema?.parse({
+                    filter: {
+                        status: "INVALID_STATUS",
+                        tags: ["tag1"],
+                        range: { start: 5, end: 15 }
+                    }
+                });
+            });
+
+            await assert.rejects(async () => {
+                inputSchema?.parse({
+                    filter: {
+                        status: "ACTIVE",
+                        tags: ["tag1"],
+                        range: { start: 5 } // Missing 'end'
+                    }
+                });
+            });
+
+            // Valid input should pass
+            const validInput = {
+                filter: {
+                    status: "PENDING",
+                    tags: ["tag3"],
+                    range: { start: 20, end: 40 }
+                }
+            };
+            const parsed = inputSchema?.parse(validInput);
+            assert.deepStrictEqual(parsed, validInput);
+            // output schema is a boolean based selection schema for selecting fields in the response
+            const outputSchema = getItemsTool.outputSchema;
+
+            const validOutputSelection = {
+                id: true,
+                name: true,
+                details: {
+                    description: true,
+                    createdAt: true
+                }
+            };
+            const parsedOutput = outputSchema?.parse(validOutputSelection);
+            assert.deepStrictEqual(parsedOutput, validOutputSelection);
+
+            // Invalid output selection - selecting non-existent field
+            await assert.rejects(async () => {
+                outputSchema?.parse({
+                    id: true,
+                    nonExistentField: true
+                });
+            });
+
+            // Invalid output selection - wrong type
+            await assert.rejects(async () => {
+                outputSchema?.parse({
+                    id: "true" // should be boolean
+                });
+            });
+
+
+        });
+
+
+    });
 })

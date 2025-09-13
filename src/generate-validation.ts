@@ -149,7 +149,7 @@ function graphqlOutputTypeToZodSelectionSchema(
         }
 
         visitedTypes.delete(type.name);
-        return z.object(zodObject).optional();
+        return z.object(zodObject).strict().optional();
     }
 
     // Fallback for other types
