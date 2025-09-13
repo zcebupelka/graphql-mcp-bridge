@@ -2655,4 +2655,10 @@ describe("Dgraph Sample Schema", async () => {
             assert(uniqueNames.size >= names.length - 10, `Too many duplicate names. Unique: ${uniqueNames.size}, Total: ${names.length}`);
         });
     });
+
+    describe("Should not have any duplicate operators", () => {
+        const operatorNames = parsedSchema.map(tool => tool.name);
+        const duplicates = operatorNames.filter((name, index) => operatorNames.indexOf(name) !== index);
+        assert.equal(duplicates.length, 0, `Found duplicate operator names: ${[...new Set(duplicates)].join(', ')}`);
+    })
 });

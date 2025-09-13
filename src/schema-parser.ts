@@ -154,7 +154,7 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
             operationsSet.add(uniqueName);
             operations.push({
                 type: 'subscription',
-                name: fieldName,
+                name: uniqueName,
                 field: field,
                 args: transformArgs(field.args)
             });
