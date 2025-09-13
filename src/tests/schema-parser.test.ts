@@ -139,7 +139,41 @@ describe("Testing Different Schemas", () => {
                 "mutation createUser($input: CreateUserInput!) { createUser(input: $input) { id } }"
             );
         });
+    });
 
+    describe("Schema 5 - enums", () => {
+        const schema = `
+        enum Role {
+            ADMIN
+            USER
+            GUEST
+        }
+
+        type User {
+            id: ID!
+            username: String!
+            role: Role!
+        }
+
+        type Query {
+            getUsersByRole(role: Role!): [User!]
+        }
+        `;
+
+        test("should parse schema 5 correctly", async () => {
+            const tools = await schemaParser(schema);
+            assert.ok(tools);
+            assert.ok(Array.isArray(tools));
+            assert.strictEqual(tools.length, 1);
+
+            const getUsersByRoleTool = tools.find(tool => tool.name === "getUsersByRole");
+            assert.ok(getUsersByRoleTool);
+            const result = await getUsersByRoleTool.execution({ role: "ADMIN" }, { id: true, username: true, role: true });
+            assert.strictEqual(
+                result.query.trim(),
+                "query getUsersByRole($role: Role!) { getUsersByRole(role: $role) { id username role } }"
+            );
+        });
     });
 
 })
