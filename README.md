@@ -8,8 +8,8 @@
 A powerful bridge implementation connecting GraphQL APIs with the Model Context Protocol (MCP), enabling seamless integration between GraphQL services and MCP-compatible AI systems. Transform any GraphQL schema into type-safe, validated MCP tools with intelligent field selection and comprehensive runtime validation powered by Zod.
 
 <div align="center">
-<img width="80%" alt="Screenshot 2025-09-14 at 01 04 08" src="https://github.com/user-attachments/assets/27d4f834-9979-48d1-aa6e-f1fbbdc746c5#gh-dark-mode-only" />
-<img width="80%" alt="Screenshot 2025-09-14 at 01 02 40" src="https://github.com/user-attachments/assets/8a87e3cc-a0c1-43f8-a02b-b9535e52be6a#gh-light-mode-only" />
+<img width="80%" alt="Screenshot 2025-09-14 at 01 04 08" src="https://github.com/user-attachments/assets/33b5f7d5-e93e-4ed3-b3e8-472f2441b95b#gh-dark-mode-only" />
+<img width="80%" alt="Screenshot 2025-09-14 at 01 02 40" src="https://github.com/user-attachments/assets/836dc4a4-cedd-4b3c-abcd-8eb4d35dadd4#gh-light-mode-only" />
 </div>
 
 
