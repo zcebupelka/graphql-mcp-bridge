@@ -74,6 +74,14 @@ function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
 
     const operations: any[] = [];
 
+    // Helper function to convert GraphQL field args to our OperationArg format
+    const transformArgs = (fieldArgs: readonly graphql.GraphQLArgument[]) => {
+        return fieldArgs.map(arg => ({
+            name: arg.name,
+            type: arg.type.toString() // Convert GraphQL type to string representation
+        }));
+    };
+
     // Extract queries
     if (queryType) {
         const fields = queryType.getFields();
@@ -82,7 +90,7 @@ function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
                 type: 'query',
                 name: fieldName,
                 field: field,
-                args: field.args
+                args: transformArgs(field.args)
             });
         }
     }
@@ -95,7 +103,7 @@ function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
                 type: 'mutation',
                 name: fieldName,
                 field: field,
-                args: field.args
+                args: transformArgs(field.args)
             });
         }
     }
@@ -108,7 +116,7 @@ function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
                 type: 'subscription',
                 name: fieldName,
                 field: field,
-                args: field.args
+                args: transformArgs(field.args)
             });
         }
     }
