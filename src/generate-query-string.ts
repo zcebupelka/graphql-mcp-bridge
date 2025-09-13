@@ -1,6 +1,8 @@
+import graphql from 'graphql';
+
 interface OperationArg {
     name: string;
-    type: string;
+    type: string | any; // Can be string (for tests) or GraphQL type object
 }
 
 interface Operation {
@@ -9,7 +11,7 @@ interface Operation {
     args: OperationArg[];
 }
 
-type FieldSelection = {
+export type FieldSelection = {
     [key: string]: boolean | FieldSelection;
 };
 
@@ -59,7 +61,12 @@ export function generateQueryString(
         const argName = arg.name;
         if (!(argName in variables)) {
             // Check if this is a required (non-null) argument
-            if (arg.type.endsWith('!')) {
+            // Handle both string types (for tests) and GraphQL type objects (for actual use)
+            const isRequired = typeof arg.type === 'string'
+                ? arg.type.endsWith('!')
+                : graphql.isNonNullType(arg.type);
+
+            if (isRequired) {
                 throw new Error(`Missing required variable: ${argName}`);
             }
         }
@@ -73,7 +80,12 @@ export function generateQueryString(
         }
     }
 
-    const args = operation.args.map((arg: OperationArg) => `$${arg.name}: ${arg.type}`).join(', ');
+    // Convert types to strings for the query
+    const args = operation.args.map((arg: OperationArg) => {
+        const typeString = typeof arg.type === 'string' ? arg.type : arg.type.toString();
+        return `$${arg.name}: ${typeString}`;
+    }).join(', ');
+
     const fieldArgs = operation.args.map((arg: OperationArg) => `${arg.name}: $${arg.name}`).join(', ');
 
     // Build field selection string

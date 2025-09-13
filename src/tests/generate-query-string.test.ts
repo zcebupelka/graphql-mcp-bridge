@@ -1,5 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert';
+import graphql from 'graphql';
 import { generateQueryString } from '../generate-query-string.ts';
 
 describe('generateQueryString', () => {

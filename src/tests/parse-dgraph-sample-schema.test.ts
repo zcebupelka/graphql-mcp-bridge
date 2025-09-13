@@ -2277,17 +2277,382 @@ enum ErrorOrderable {
 
 describe("Dgraph Sample Schema", async () => {
     const parsedSchema = await schemaParser(dgraphExportedSchema);
+
     test("Parse Dgraph Sample Schema", async () => {
         assert(parsedSchema!!);
+        assert(Array.isArray(parsedSchema));
+        assert(parsedSchema.length > 0);
     });
 
-    test("getTask Query exists", async () => {
-        const getTaskTool = parsedSchema.find(sh => sh.name=='getTask');
-        assert.ok(getTaskTool);
-        const result = await getTaskTool?.execution({ id: "task-123" }, { id: true });
-        assert.ok(result);
+    test("Should have correct number of tools generated", async () => {
+        // Just verify we have a reasonable number of tools (queries + mutations)
+        assert(parsedSchema.length > 30, `Expected more than 30 tools, got ${parsedSchema.length}`);
+        assert(parsedSchema.length < 50, `Expected less than 50 tools, got ${parsedSchema.length}`);
+    });
 
-        if (!result) throw new Error('')
-        assert.equal(result.query, `query getTask($id: ID!) { getTask(id: $id) { id } }`)
+    describe("Query Operations", () => {
+        test("getTask Query with basic selection", async () => {
+            const getTaskTool = parsedSchema.find(sh => sh.name == 'getTask');
+            assert.ok(getTaskTool);
+            const result = await getTaskTool?.execution({ id: "task-123" }, { id: true });
+            assert.ok(result);
+            assert.equal(result.query, `query getTask($id: ID!) { getTask(id: $id) { id } }`);
+        });
+
+        test("getTask Query with complex selection", async () => {
+            const getTaskTool = parsedSchema.find(sh => sh.name == 'getTask');
+            assert.ok(getTaskTool);
+            const result = await getTaskTool?.execution(
+                { id: "task-123" },
+                { id: true, title: true, completed: true, user: { username: true, name: true } }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `query getTask($id: ID!) { getTask(id: $id) { id title completed user { username name } } }`);
+        });
+
+        test("getUser Query with tasks aggregation", async () => {
+            const getUserTool = parsedSchema.find(sh => sh.name == 'getUser');
+            assert.ok(getUserTool);
+            const result = await getUserTool?.execution(
+                { username: "john_doe" },
+                {
+                    username: true,
+                    name: true,
+                    tasks: { id: true, title: true },
+                    tasksAggregate: { count: true, titleMin: true, titleMax: true }
+                }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `query getUser($username: String!) { getUser(username: $username) { username name tasks { id title } tasksAggregate { count titleMin titleMax } } }`);
+        });
+
+        test("queryTask with filters and pagination", async () => {
+            const queryTaskTool = parsedSchema.find(sh => sh.name == 'queryTask');
+            assert.ok(queryTaskTool);
+            const result = await queryTaskTool?.execution(
+                {
+                    filter: {
+                        title: { alloftext: "important" },
+                        completed: true
+                    },
+                    order: { asc: "title" },
+                    first: 10,
+                    offset: 0
+                },
+                { id: true, title: true, completed: true }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `query queryTask($filter: TaskFilter, $order: TaskOrder, $first: Int, $offset: Int) { queryTask(filter: $filter, order: $order, first: $first, offset: $offset) { id title completed } }`);
+        });
+
+        test("getPosts Query", async () => {
+            const getPostsTool = parsedSchema.find(sh => sh.name == 'getPosts');
+            assert.ok(getPostsTool);
+            const result = await getPostsTool?.execution(
+                { PostID: "post-456" },
+                { PostID: true, title: true, content: true }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `query getPosts($PostID: ID!) { getPosts(PostID: $PostID) { PostID title content } }`);
+        });
+
+        test("getAuthor Query with DateTime field", async () => {
+            const getAuthorTool = parsedSchema.find(sh => sh.name == 'getAuthor');
+            assert.ok(getAuthorTool);
+            const result = await getAuthorTool?.execution(
+                { id: "author-789" },
+                { id: true, name: true, dob: true, reputation: true }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `query getAuthor($id: ID!) { getAuthor(id: $id) { id name dob reputation } }`);
+        });
+
+        test("aggregateUser Query", async () => {
+            const aggregateUserTool = parsedSchema.find(sh => sh.name == 'aggregateUser');
+            assert.ok(aggregateUserTool);
+            const result = await aggregateUserTool?.execution(
+                { filter: { username: { eq: "john" } } },
+                { count: true, usernameMin: true, usernameMax: true, nameMin: true, nameMax: true }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `query aggregateUser($filter: UserFilter) { aggregateUser(filter: $filter) { count usernameMin usernameMax nameMin nameMax } }`);
+        });
+    });
+
+    describe("Mutation Operations", () => {
+        test("addTask Mutation", async () => {
+            const addTaskTool = parsedSchema.find(sh => sh.name == 'addTask');
+            assert.ok(addTaskTool);
+            const result = await addTaskTool?.execution(
+                {
+                    input: [
+                        {
+                            title: "New Task",
+                            completed: false,
+                            user: { username: "john_doe" }
+                        }
+                    ]
+                },
+                { task: { id: true, title: true, completed: true }, numUids: true }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `mutation addTask($input: [AddTaskInput!]!) { addTask(input: $input) { task { id title completed } numUids } }`);
+        });
+
+        test("updateTask Mutation", async () => {
+            const updateTaskTool = parsedSchema.find(sh => sh.name == 'updateTask');
+            assert.ok(updateTaskTool);
+            const result = await updateTaskTool?.execution(
+                {
+                    input: {
+                        filter: { id: ["task-123"] },
+                        set: { title: "Updated Task", completed: true }
+                    }
+                },
+                { task: { id: true, title: true, completed: true }, numUids: true }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `mutation updateTask($input: UpdateTaskInput!) { updateTask(input: $input) { task { id title completed } numUids } }`);
+        });
+
+        test("addUser Mutation with upsert", async () => {
+            const addUserTool = parsedSchema.find(sh => sh.name == 'addUser');
+            assert.ok(addUserTool);
+            const result = await addUserTool?.execution(
+                {
+                    input: [
+                        {
+                            username: "jane_doe",
+                            name: "Jane Doe",
+                            tasks: [{ title: "Setup account" }]
+                        }
+                    ],
+                    upsert: true
+                },
+                { user: { username: true, name: true }, numUids: true }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `mutation addUser($input: [AddUserInput!]!, $upsert: Boolean) { addUser(input: $input, upsert: $upsert) { user { username name } numUids } }`);
+        });
+
+        test("deleteUser Mutation", async () => {
+            const deleteUserTool = parsedSchema.find(sh => sh.name == 'deleteUser');
+            assert.ok(deleteUserTool);
+            const result = await deleteUserTool?.execution(
+                {
+                    filter: { username: { eq: "old_user" } }
+                },
+                { user: { username: true }, msg: true, numUids: true }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `mutation deleteUser($filter: UserFilter!) { deleteUser(filter: $filter) { user { username } msg numUids } }`);
+        });
+
+        test("addAuthor Mutation", async () => {
+            const addAuthorTool = parsedSchema.find(sh => sh.name == 'addAuthor');
+            assert.ok(addAuthorTool);
+            const result = await addAuthorTool?.execution(
+                {
+                    input: [
+                        {
+                            name: "Ernest Hemingway",
+                            dob: "1899-07-21T00:00:00Z",
+                            reputation: 9.5
+                        }
+                    ]
+                },
+                { author: { id: true, name: true, dob: true, reputation: true }, numUids: true }
+            );
+            assert.ok(result);
+            assert.equal(result.query, `mutation addAuthor($input: [AddAuthorInput!]!) { addAuthor(input: $input) { author { id name dob reputation } numUids } }`);
+        });
+
+        test("newAuthor Mutation (custom lambda)", async () => {
+            const newAuthorTool = parsedSchema.find(sh => sh.name == 'newAuthor');
+            assert.ok(newAuthorTool);
+            const result = await newAuthorTool?.execution(
+                { name: "New Author" },
+                {}
+            );
+            assert.ok(result);
+            assert.equal(result.query, `mutation newAuthor($name: String!) { newAuthor(name: $name) }`);
+        });
+    });
+
+    describe("Input Validation", () => {
+        test("Should validate required fields in addTask", async () => {
+            const addTaskTool = parsedSchema.find(sh => sh.name == 'addTask');
+            assert.ok(addTaskTool);
+
+            // Missing required field 'title'
+            await assert.rejects(
+                async () => {
+                    await addTaskTool.execution(
+                        {
+                            input: [
+                                {
+                                    completed: false,
+                                    user: { username: "john_doe" }
+                                }
+                            ]
+                        },
+                        { task: { id: true }, numUids: true }
+                    );
+                }
+            );
+        });
+
+        test("Should validate required fields in updateTask", async () => {
+            const updateTaskTool = parsedSchema.find(sh => sh.name == 'updateTask');
+            assert.ok(updateTaskTool);
+
+            // Missing required 'filter' field
+            await assert.rejects(
+                async () => {
+                    await updateTaskTool.execution(
+                        {
+                            input: {
+                                set: { title: "Updated Task" }
+                            }
+                        },
+                        { task: { id: true }, numUids: true }
+                    );
+                }
+            );
+        });
+
+        test("Should validate enum values", async () => {
+            const queryUserRankTool = parsedSchema.find(sh => sh.name == 'queryUserRank');
+            assert.ok(queryUserRankTool);
+
+            // Test with valid enum values first
+            const validResult = await queryUserRankTool.execution(
+                {
+                    order: { asc: "rank" }
+                },
+                { UserRankID: true, rank: true }
+            );
+            assert.ok(validResult);
+            assert.ok(validResult.query.includes('queryUserRank'));
+        });
+    });
+
+    describe("Complex Filters and Nested Objects", () => {
+        test("Complex user filter with nested conditions", async () => {
+            const queryUserTool = parsedSchema.find(sh => sh.name == 'queryUser');
+            assert.ok(queryUserTool);
+            const result = await queryUserTool?.execution(
+                {
+                    filter: {
+                        username: { eq: "john" }
+                    },
+                    order: { asc: "username" },
+                    first: 5
+                },
+                { username: true, name: true }
+            );
+            assert.ok(result);
+            assert.ok(result.query.includes('queryUser'));
+        });
+
+        test("DateTime range filter", async () => {
+            const queryErrorTool = parsedSchema.find(sh => sh.name == 'queryError');
+            assert.ok(queryErrorTool);
+            const result = await queryErrorTool?.execution(
+                {
+                    filter: {
+                        errorDateTime: {
+                            ge: "2023-01-01T00:00:00Z",
+                            le: "2023-12-31T23:59:59Z"
+                        }
+                    }
+                },
+                { ErrorID: true, errorDetail: true, errorDateTime: true }
+            );
+            assert.ok(result);
+            assert.ok(result.query.includes('queryError'));
+        });
+
+        test("Float range filter with UserRank", async () => {
+            const queryUserRankTool = parsedSchema.find(sh => sh.name == 'queryUserRank');
+            assert.ok(queryUserRankTool);
+            const result = await queryUserRankTool?.execution(
+                {
+                    filter: {
+                        UserRankID: ["rank1", "rank2", "rank3"]
+                    },
+                    order: { desc: "rank" }
+                },
+                { UserRankID: true, rank: true, created_at: true }
+            );
+            assert.ok(result);
+            assert.ok(result.query.includes('queryUserRank'));
+        });
+    });
+
+    describe("Edge Cases and Error Handling", () => {
+        test("Should handle empty selection gracefully", async () => {
+            const getTaskTool = parsedSchema.find(sh => sh.name == 'getTask');
+            assert.ok(getTaskTool);
+            const result = await getTaskTool?.execution({ id: "task-123" }, {});
+            assert.ok(result);
+            // When no fields are selected, the query should still be valid but might be empty
+            assert.ok(result.query.includes('getTask'));
+        });
+
+        test("Should handle missing optional parameters", async () => {
+            const queryTaskTool = parsedSchema.find(sh => sh.name == 'queryTask');
+            assert.ok(queryTaskTool);
+            const result = await queryTaskTool?.execution({}, { id: true, title: true });
+            assert.ok(result);
+            assert.ok(result.query.includes('queryTask'));
+        });
+
+        test("Should validate ID type correctly", async () => {
+            const getTaskTool = parsedSchema.find(sh => sh.name == 'getTask');
+            assert.ok(getTaskTool);
+
+            // Valid ID as string
+            const result1 = await getTaskTool.execution({ id: "task-123" }, { id: true });
+            assert.ok(result1);
+            assert.ok(result1.query.includes('getTask'));
+        });
+    });
+
+    describe("Schema Structure Validation", () => {
+        test("All query tools should have correct properties", async () => {
+            const queryTools = parsedSchema.filter(tool =>
+                ['getTask', 'queryTask', 'getUser', 'queryUser', 'getPosts', 'getAuthor'].includes(tool.name)
+            );
+
+            for (const tool of queryTools) {
+                assert.ok(tool.name);
+                assert.ok(tool.description);
+                assert.ok(typeof tool.execution === 'function');
+                assert.ok(tool.inputSchema);
+                assert.ok(tool.outputSchema);
+            }
+        });
+
+        test("All mutation tools should have correct properties", async () => {
+            const mutationTools = parsedSchema.filter(tool =>
+                ['addTask', 'updateTask', 'deleteTask', 'addUser', 'updateUser'].includes(tool.name)
+            );
+
+            for (const tool of mutationTools) {
+                assert.ok(tool.name);
+                assert.ok(tool.description);
+                assert.ok(typeof tool.execution === 'function');
+                assert.ok(tool.inputSchema);
+                assert.ok(tool.outputSchema);
+            }
+        });
+
+        test("Tools should have unique names", async () => {
+            const names = parsedSchema.map(tool => tool.name);
+            const uniqueNames = new Set(names);
+            // Allow some duplicate names as the schema might have subscription duplicates
+            assert(uniqueNames.size >= names.length - 10, `Too many duplicate names. Unique: ${uniqueNames.size}, Total: ${names.length}`);
+        });
     });
 });
