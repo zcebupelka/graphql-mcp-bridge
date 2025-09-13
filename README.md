@@ -14,20 +14,22 @@ A powerful bridge implementation connecting GraphQL APIs with the Model Context 
 
 ## Installation
 
-### From GitHub Packages
+### From npm
 
 ```bash
-# Add GitHub Packages registry to your .npmrc
-echo "@pshaddel:registry=https://npm.pkg.github.com" >> .npmrc
-
-# Install the package
-npm install @pshaddel/graphql-mcp-bridge
+npm install graphql-mcp-bridge
+# or
+pnpm install graphql-mcp-bridge
+# or
+yarn add graphql-mcp-bridge
 ```
+
+That's it! No authentication or special configuration required.
 
 ## Quick Start
 
 ```typescript
-import { schemaParser } from '@pshaddel/graphql-mcp-bridge';
+import { schemaParser } from 'graphql-mcp-bridge';
 
 // Define your GraphQL schema
 const schema = `
@@ -494,18 +496,45 @@ Run tests with:
 pnpm test
 ```
 
-## Publishing to GitHub Packages
+## Publishing
 
-This package is published to GitHub Packages. To publish a new version:
+This package is published to npm. To publish a new version:
 
 1. Update the version in `package.json`
-2. Create a new release on GitHub
-3. The GitHub Action will automatically build and publish the package
+2. Run `npm run build` to build the package
+3. Run `npm publish` to publish to npm
+4. Create a new release on GitHub for documentation
 
 ## Requirements
 
 - **Node.js**: >= 24.0.0
 - **Dependencies**: graphql, zod
+
+## Troubleshooting
+
+### Common Issues
+
+If you encounter any installation issues, try:
+
+1. **Clear npm cache**:
+
+   ```bash
+   npm cache clean --force
+   # or
+   pnpm store prune
+   ```
+
+2. **Update npm/pnpm**:
+
+   ```bash
+   npm install -g npm@latest
+   # or
+   npm install -g pnpm@latest
+   ```
+
+3. **Check Node.js version**: This package requires Node.js >= 24.0.0
+
+If you're still having issues, please [open an issue](https://github.com/pshaddel/graphql-mcp-bridge/issues) on GitHub.
 
 ## License
 
