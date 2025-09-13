@@ -1,29 +1,56 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert';
-import { schemaParser } from '../index.ts';
+import { schemaParser } from '../schema-parser.ts';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { validateOperationArguments } from '../generate-validation.ts';
 
+type Tool = {
+    name: string;
+    execution: (variables: any) => Promise<{
+        query: string;
+        variables: any;
+    }>;
+    description?: string;
+    inputSchema?: any;
+    outputSchema?: any;
+};
 describe('GraphQL Zod Validation', () => {
+    let tools: Tool[];
     let validationSchemas: Record<string, any>;
 
     // Setup: Parse schema before running tests
-    test('should parse GraphQL schema and generate validation schemas', async () => {
+    test('should parse GraphQL schema and generate tools with validation schemas', async () => {
         const schemaPath = join(process.cwd(), 'src/tests/schema-samples/user-posts.graphql');
         const graphqlSchema = readFileSync(schemaPath, 'utf-8');
 
-        const result = await schemaParser(graphqlSchema);
-        validationSchemas = result.validationSchemas;
+        tools = await schemaParser(graphqlSchema);
 
-        assert.ok(validationSchemas);
-        assert.ok(Object.keys(validationSchemas).length > 0);
+        // Extract validation schemas from tools for backward compatibility with existing tests
+        validationSchemas = {};
+        for (const tool of tools) {
+            if (tool.inputSchema) {
+                validationSchemas[tool.name] = tool.inputSchema;
+            }
+        }
 
-        // Check that we have validation schemas for our expected operations
-        assert.ok(validationSchemas.users);
-        assert.ok(validationSchemas.user);
-        assert.ok(validationSchemas.createUser);
-        assert.ok(validationSchemas.createPost);
+        assert.ok(tools);
+        assert.ok(Array.isArray(tools));
+        assert.ok(tools.length > 0);
+
+        // Check that we have tools for our expected operations
+        const toolNames = tools.map(tool => tool.name);
+        assert.ok(toolNames.includes('users'));
+        assert.ok(toolNames.includes('user'));
+        assert.ok(toolNames.includes('createUser'));
+        assert.ok(toolNames.includes('createPost'));
+
+        // Check that tools have the correct structure
+        const userTool = tools.find(tool => tool.name === 'user');
+        assert.ok(userTool);
+        assert.ok(typeof userTool.execution === 'function');
+        assert.ok(userTool.description);
+        assert.ok(userTool.inputSchema);
     });
 
     test('should validate query arguments correctly', () => {
@@ -116,5 +143,54 @@ describe('GraphQL Zod Validation', () => {
         assert.throws(() => {
             validateOperationArguments('unknownOperation', {}, validationSchemas);
         }, /No validation schema found/);
+    });
+
+    test('should execute tool functions correctly', async () => {
+        const userTool = tools.find(tool => tool.name === 'user');
+        assert.ok(userTool);
+
+        // Test successful execution
+        const result = await userTool.execution({ id: '123' });
+        assert.ok(result.query);
+        assert.ok(result.variables);
+        assert.strictEqual(result.variables.id, '123');
+        assert.ok(result.query.includes('user'));
+    });
+
+    test('should validate input through tool execution', async () => {
+        const createUserTool = tools.find(tool => tool.name === 'createUser');
+        assert.ok(createUserTool);
+
+        // Test with valid input
+        const validResult = await createUserTool.execution({
+            input: {
+                username: 'john_doe',
+                email: 'john@example.com'
+            }
+        });
+        assert.ok(validResult.query);
+        assert.ok(validResult.variables);
+
+        // Test with invalid input - should throw
+        await assert.rejects(async () => {
+            await createUserTool.execution({
+                input: {
+                    username: 'john_doe'
+                    // Missing required email
+                }
+            });
+        }, /Validation failed/);
+    });
+
+    test('should have proper tool metadata', () => {
+        for (const tool of tools) {
+            assert.ok(tool.name);
+            assert.ok(typeof tool.execution === 'function');
+            assert.ok(tool.description);
+            // Input schema should exist for operations that have arguments
+            if (tool.name !== 'users') { // users query has no arguments
+                assert.ok(tool.inputSchema);
+            }
+        }
     });
 });
