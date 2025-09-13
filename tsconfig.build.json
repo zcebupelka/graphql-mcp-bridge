@@ -1,12 +1,12 @@
 {
 	"compilerOptions": {
-		"target": "es6",
-		"module": "commonjs",
+		"target": "es2020",
+		"module": "es2020",
+		"moduleResolution": "node",
 		"rootDir": "./src",
 		"outDir": "./dist",
 		"esModuleInterop": true,
 		"resolveJsonModule": true,
-		"moduleResolution": "node",
 		"strict": true,
 		"sourceMap": true,
 		"declaration": true,
