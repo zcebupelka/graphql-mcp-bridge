@@ -209,6 +209,55 @@ function graphqlOutputTypeToZodSelectionSchema(
     return z.boolean().optional();
 }
 
+// Helper function to create default selection for first-layer scalar/enum fields
+function createDefaultSelection(
+    type: pkg.GraphQLType
+): Record<string, boolean> {
+    const defaultSelection: Record<string, boolean> = {};
+
+    // Unwrap NonNull and List types to get to the core type
+    let coreType = type;
+    if (isNonNullType(coreType)) {
+        coreType = coreType.ofType;
+    }
+    if (isListType(coreType)) {
+        coreType = coreType.ofType;
+        if (isNonNullType(coreType)) {
+            coreType = coreType.ofType;
+        }
+    }
+
+    if (isObjectType(coreType)) {
+        const fields = coreType.getFields();
+
+        for (const [fieldName, field] of Object.entries(fields)) {
+            let fieldType = field.type;
+
+            // Unwrap NonNull types
+            if (isNonNullType(fieldType)) {
+                fieldType = fieldType.ofType;
+            }
+
+            // Only set default true for scalar and enum types (first layer only)
+            if (isScalarType(fieldType) || isEnumType(fieldType)) {
+                defaultSelection[fieldName] = true;
+            }
+            // For List types, check if the item type is scalar/enum
+            else if (isListType(fieldType)) {
+                let itemType = fieldType.ofType;
+                if (isNonNullType(itemType)) {
+                    itemType = itemType.ofType;
+                }
+                if (isScalarType(itemType) || isEnumType(itemType)) {
+                    defaultSelection[fieldName] = true;
+                }
+            }
+        }
+    }
+
+    return defaultSelection;
+}
+
 // Generate Zod output selection schemas for all operations
 export function generateOutputSelectionSchemas(operations: any[], schema: pkg.GraphQLSchema) {
     const outputSchemas: Record<string, z.ZodSchema> = {};
@@ -216,7 +265,20 @@ export function generateOutputSelectionSchemas(operations: any[], schema: pkg.Gr
     for (const operation of operations) {
         const returnType = operation.field.type;
         const selectionSchema = graphqlOutputTypeToZodSelectionSchema(returnType, schema);
-        outputSchemas[operation.name] = selectionSchema;
+
+        // Create default selection for first-layer scalar/enum fields
+        const defaultSelection = createDefaultSelection(returnType);
+
+        // Transform the schema to apply defaults when selection is empty or undefined
+        const schemaWithDefaults = selectionSchema.transform((value) => {
+            // If value is undefined, null, or empty object, use defaults
+            if (!value || (typeof value === 'object' && Object.keys(value).length === 0)) {
+                return defaultSelection;
+            }
+            return value;
+        });
+
+        outputSchemas[operation.name] = schemaWithDefaults;
     }
 
     return outputSchemas;

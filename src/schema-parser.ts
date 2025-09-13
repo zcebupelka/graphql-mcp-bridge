@@ -82,7 +82,7 @@ export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
             },
             description: `GraphQL ${operation.type} operation: ${operation.name}`,
             inputSchema: validationSchemas[operation.name] || z.object({}),
-            outputSchema: outputSelectionSchemas[operation.name] || z.object({})
+            outputSchema: outputSelectionSchemas[operation.name]
         };
 
         tools.push(tool);
@@ -91,7 +91,7 @@ export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
     return tools;
 }
 
-function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
+export function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
     const queryType = schema.getQueryType();
     const mutationType = schema.getMutationType();
     const subscriptionType = schema.getSubscriptionType();
