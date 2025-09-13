@@ -54,6 +54,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "biome": "^0.3.3",
     "graphql": "^16.11.0",
     "zod": "^4.1.8"
   }
