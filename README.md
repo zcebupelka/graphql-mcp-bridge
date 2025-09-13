@@ -1,16 +1,34 @@
 # GraphQL MCP Bridge
+[![CI](https://github.com/pshaddel/graphql-mcp-bridge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pshaddel/graphql-mcp-bridge/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-ISC-yellow.svg)](https://opensource.org/licenses/MIT)
+[![codecov](https://codecov.io/github/pshaddel/graphql-mcp-bridge/graph/badge.svg?token=5DNFYP8N97)](https://codecov.io/github/pshaddel/graphql-mcp-bridge)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-A powerful bridge implementation connecting GraphQL APIs with the Model Context Protocol (MCP), enabling seamless integration between GraphQL services and MCP-compatible AI systems. Transform any GraphQL schema into type-safe, validated MCP tools with intelligent field selection.
+<meta name="google-site-verification" content="TH8G_S7VXcPStsxDW5p5uLhvMOUW_onxvvz87LLF4Ck" />
+
+
+A powerful bridge implementation connecting GraphQL APIs with the Model Context Protocol (MCP), enabling seamless integration between GraphQL services and MCP-compatible AI systems. Transform any GraphQL schema into type-safe, validated MCP tools with intelligent field selection and comprehensive runtime validation powered by Zod.
 
 ## Features
 
 - 🔗 **GraphQL to MCP Bridge**: Convert GraphQL schemas to MCP-compatible function definitions
-- 🛡️ **Type-Safe Validation**: Built-in Zod validation for GraphQL operations and arguments
-- 🎯 **Smart Field Selection**: Dynamic field selection with support for nested objects, unions, and interfaces
+- 🛡️ **Comprehensive Zod Validation**:
+  - **Input Validation**: Automatic validation of operation arguments with type-safe Zod schemas
+  - **Output Selection Validation**: Validate field selection objects for GraphQL queries and mutations
+  - **Nested Type Support**: Handle complex nested inputs, enums, interfaces, and union types
+  - **Circular Reference Protection**: Safe handling of self-referencing types
+- 🎯 **Smart Field Selection**:
+  - Dynamic field selection with support for nested objects, unions, and interfaces
+  - **Default Selection Generation**: Automatically select scalar and enum fields when no selection provided
+  - **Strict Schema Validation**: Prevent selection of non-existent fields
 - 🚀 **Query Generation**: Automatic GraphQL query string generation with variable handling
 - 📝 **TypeScript Support**: Full TypeScript support with comprehensive type definitions
-- �️ **Advanced Schema Support**: Handles enums, interfaces, unions, complex inputs, and nested types
-- ⚡ **Runtime Validation**: Input validation and output schema generation for robust API interactions
+- ⚙️ **Advanced Schema Support**: Handles enums, interfaces, unions, complex inputs, and nested types
+- ⚡ **Runtime Safety**:
+  - Built-in validation for all operations before execution
+  - User-friendly error messages for validation failures
+  - Fallback handling for edge cases and malformed data Bridge
 
 ## Installation
 
@@ -66,14 +84,135 @@ const tools = await schemaParser(schema);
 
 // Use the generated tools
 const userTool = tools.find(tool => tool.name === 'user');
+
+// The tool automatically validates inputs and field selections
 const result = await userTool.execution(
-  { id: "123" }, // Variables
-  { id: true, username: true, posts: { title: true } } // Field selection
+  { id: "123" }, // Variables - validated against input schema
+  { id: true, username: true, posts: { title: true } } // Field selection - validated against output schema
 );
 
 console.log(result.query);
 // Output: query user($id: ID!) { user(id: $id) { id username posts { title } } }
+
+// Access the validation schemas directly
+console.log('Input schema:', userTool.inputSchema);
+console.log('Output schema:', userTool.outputSchema);
 ```
+
+## Validation System
+
+GraphQL MCP Bridge includes a comprehensive validation system powered by Zod that ensures type safety at runtime. The validation system works on two levels:
+
+### Input Validation
+
+All operation arguments are automatically validated against Zod schemas generated from the GraphQL schema:
+
+```typescript
+// The tool automatically validates input arguments
+const result = await createUserTool.execution(
+  { input: { username: "john", email: "john@example.com" } }, // ✅ Valid
+  { id: true, username: true }
+);
+
+// This will throw a validation error
+try {
+  await createUserTool.execution(
+    { input: { username: "john" } }, // ❌ Missing required 'email' field
+    { id: true }
+  );
+} catch (error) {
+  console.error(error.message); // "Validation failed for createUser: ..."
+}
+```
+
+### Output Selection Validation
+
+Field selection objects are validated to ensure you only select existing fields:
+
+```typescript
+// Valid field selection
+const result = await getUserTool.execution(
+  { id: "123" },
+  {
+    id: true,
+    username: true,
+    posts: { id: true, title: true } // ✅ Valid nested selection
+  }
+);
+
+// This will throw a validation error
+try {
+  await getUserTool.execution(
+    { id: "123" },
+    { id: true, nonExistentField: true } // ❌ Field doesn't exist
+  );
+} catch (error) {
+  console.error(error.message); // Output selection validation failed
+}
+```
+
+### Manual Validation
+
+You can also use the validation functions directly:
+
+```typescript
+import {
+  validateOperationArguments,
+  validateOutputSelection,
+  generateValidationSchemas,
+  generateOutputSelectionSchemas
+} from 'graphql-mcp-bridge';
+
+const tools = await schemaParser(schema);
+const userTool = tools.find(tool => tool.name === 'user');
+
+// Validate arguments manually
+try {
+  const validatedArgs = userTool.inputSchema.parse({ id: "123" });
+  console.log('Arguments are valid:', validatedArgs);
+} catch (error) {
+  console.error('Invalid arguments:', error.message);
+}
+
+// Validate output selection manually
+try {
+  const validatedSelection = userTool.outputSchema.parse({
+    id: true,
+    username: true
+  });
+  console.log('Selection is valid:', validatedSelection);
+} catch (error) {
+  console.error('Invalid selection:', error.message);
+}
+```
+
+### Default Field Selection
+
+When no field selection is provided or an empty object is passed, the system automatically selects all scalar and enum fields at the first level:
+
+```typescript
+// These are equivalent:
+await getUserTool.execution({ id: "123" }, {});
+await getUserTool.execution({ id: "123" }, {
+  id: true,
+  username: true,
+  email: true,
+  createdAt: true
+  // Complex fields like 'posts' are not auto-selected
+});
+```
+
+### Supported Validation Features
+
+- ✅ **Scalar Types**: String, Int, Float, Boolean, ID with proper type checking
+- ✅ **Enum Validation**: Ensures only valid enum values are accepted
+- ✅ **Complex Input Objects**: Nested input validation with proper type checking
+- ✅ **List Types**: Array validation with item type checking
+- ✅ **Non-null Types**: Required field validation
+- ✅ **Optional Fields**: Proper handling of nullable fields
+- ✅ **Circular References**: Safe handling without infinite recursion
+- ✅ **Union Types**: Validation for fragment selections
+- ✅ **Interface Types**: Validation for interface implementations
 
 ## Advanced Usage Examples
 
@@ -374,21 +513,69 @@ Parses a GraphQL schema string and returns an array of MCP-compatible tools with
 
 Generates a GraphQL query string from an operation definition with optional variables and field selection.
 
-#### `generateValidationSchemas(operations, schema)`
+### Validation Functions
+
+#### `generateValidationSchemas(operations, schema): Record<string, z.ZodSchema>`
 
 Generates Zod validation schemas for GraphQL operations input arguments.
 
-#### `generateOutputSelectionSchemas(operations, schema)`
+**Parameters:**
+
+- `operations`: Array of GraphQL operations extracted from schema
+- `schema`: GraphQL schema object
+
+**Returns:**
+
+- Object mapping operation names to their input validation schemas
+
+#### `generateOutputSelectionSchemas(operations, schema): Record<string, z.ZodSchema>`
 
 Generates Zod schemas for validating output field selections, supporting nested objects, unions, and interfaces.
 
-#### `validateOperationArguments(args, operationName, validationSchemas): boolean`
+**Parameters:**
+
+- `operations`: Array of GraphQL operations extracted from schema
+- `schema`: GraphQL schema object
+
+**Returns:**
+
+- Object mapping operation names to their output selection validation schemas
+
+#### `validateOperationArguments(operationName, variables, validationSchemas): any`
 
 Validates operation arguments against generated Zod schemas.
 
-#### `validateOutputSelection(selection, operationName, outputSchemas): boolean`
+**Parameters:**
+
+- `operationName` (string): Name of the GraphQL operation
+- `variables` (any): Input variables to validate
+- `validationSchemas` (Record<string, z.ZodSchema>): Generated validation schemas
+
+**Returns:**
+
+- Validated and parsed variables object
+
+**Throws:**
+
+- Error if validation fails with detailed error message
+
+#### `validateOutputSelection(operationName, selection, outputSchemas): any`
 
 Validates output field selection against generated output schemas.
+
+**Parameters:**
+
+- `operationName` (string): Name of the GraphQL operation
+- `selection` (any): Field selection object to validate
+- `outputSchemas` (Record<string, z.ZodSchema>): Generated output selection schemas
+
+**Returns:**
+
+- Validated and parsed selection object (with defaults applied if empty)
+
+**Throws:**
+
+- Error if validation fails with detailed error message
 
 ### Tool Structure
 
@@ -419,36 +606,99 @@ The field selection parameter supports:
 
 ## Error Handling
 
-The library provides detailed error messages for common validation issues:
+The library provides detailed error messages for validation issues, with comprehensive coverage of GraphQL type validation:
+
+### Input Validation Errors
 
 ```typescript
-// Missing required variable
-throw new Error('Missing required variable: fieldName');
+// Missing required field
+throw new Error('Validation failed for createUser: Required at "input.email"');
 
-// Invalid type
-throw new Error('Invalid type for variable fieldName: expected number, received string');
+// Wrong type
+throw new Error('Validation failed for updateUser: Expected string, received number at "input.username"');
 
 // Invalid enum value
-throw new Error('Invalid enum value for field: expected ACTIVE|INACTIVE, received UNKNOWN');
+throw new Error('Validation failed for updatePost: Invalid enum value. Expected DRAFT | PUBLISHED, received INVALID at "input.status"');
 
-// Invalid field selection
-throw new Error('Field nonExistentField does not exist on type User');
+// Array validation
+throw new Error('Validation failed for createPost: Expected array, received string at "input.tags"');
+
+// Nested object validation
+throw new Error('Validation failed for createUser: Required at "input.profile.firstName"');
+```
+
+### Output Selection Validation Errors
+
+```typescript
+// Non-existent field
+throw new Error('Output selection validation failed for getUser: Unrecognized key(s) in object: "nonExistentField"');
+
+// Wrong selection type
+throw new Error('Output selection validation failed for getUser: Expected boolean, received string at "id"');
+
+// Invalid nested selection
+throw new Error('Output selection validation failed for getUser: Unrecognized key(s) in object: "invalidNestedField" at "posts"');
+```
+
+### Circular Reference Handling
+
+The validation system safely handles circular references in GraphQL schemas:
+
+```typescript
+// For schemas with circular references like User -> Post -> User
+// The system provides fallback schemas to prevent infinite recursion
+const tools = await schemaParser(schemaWithCircularRefs); // ✅ Works safely
+```
+
+### Validation Error Structure
+
+All validation errors follow a consistent structure:
+
+```typescript
+try {
+  await tool.execution(invalidInput, invalidSelection);
+} catch (error) {
+  console.log(error.message); // User-friendly error message
+  console.log(error.name);    // 'Error'
+  // Original Zod error details are parsed into readable format
+}
 ```
 
 ## Supported GraphQL Features
 
-- ✅ **Queries and Mutations**: Full support for Query and Mutation operations
-- ✅ **Scalar Types**: String, Int, Float, Boolean, ID
-- ✅ **Object Types**: Complex nested object structures
-- ✅ **Input Types**: Complex input arguments with validation
-- ✅ **Enums**: Enumeration types with validation
-- ✅ **Lists**: Arrays of any supported type
-- ✅ **Non-null Types**: Required field validation
-- ✅ **Interfaces**: Interface types with fragment selection
-- ✅ **Union Types**: Union types with fragment selection
-- ✅ **Nested Field Selection**: Deep object field selection
+### Core Operations
+
+- ✅ **Queries and Mutations**: Full support for Query and Mutation operations with validation
 - ⚠️ **Subscriptions**: Not currently supported
-- ⚠️ **Custom Scalars**: Limited support (treated as strings)
+
+### Type System
+
+- ✅ **Scalar Types**: String, Int, Float, Boolean, ID with proper Zod validation
+- ✅ **Object Types**: Complex nested object structures with recursive validation
+- ✅ **Input Types**: Complex input arguments with comprehensive validation
+- ✅ **Enums**: Enumeration types with strict value validation
+- ✅ **Lists**: Arrays of any supported type with item validation
+- ✅ **Non-null Types**: Required field validation with proper error messages
+- ✅ **Interfaces**: Interface types with fragment selection validation
+- ✅ **Union Types**: Union types with fragment selection validation
+- ⚠️ **Custom Scalars**: Limited support (treated as strings with basic validation)
+
+### Advanced Features
+
+- ✅ **Nested Field Selection**: Deep object field selection with validation
+- ✅ **Circular References**: Safe handling without infinite recursion
+- ✅ **Default Selections**: Automatic selection of scalar/enum fields when no selection provided
+- ✅ **Fragment Validation**: Proper validation for union and interface fragment selections
+- ✅ **Input Object Nesting**: Deep nested input validation with type checking
+- ✅ **Optional Field Handling**: Proper nullable field validation
+
+### Validation Features
+
+- ✅ **Runtime Type Checking**: All inputs validated at runtime before execution
+- ✅ **Schema-based Validation**: Generated from actual GraphQL schema definition
+- ✅ **Detailed Error Messages**: User-friendly error reporting with field paths
+- ✅ **Fallback Handling**: Graceful degradation for edge cases
+- ✅ **Circular Reference Protection**: Prevents infinite loops in recursive types
 
 ## Development
 
