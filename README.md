@@ -25,6 +25,7 @@ A powerful bridge implementation connecting GraphQL APIs with the Model Context 
   - **Operation Type Control**: Choose which operation types to include (queries, mutations, subscriptions)
   - **Custom Prefixes**: Add prefixes to operation names for better organization
   - **Granular Control**: Fine-tune which operations are exposed as MCP tools
+  - **Selective Tool Generation**: Skip operations using ignore phrases in descriptions
 - 🛡️ **Comprehensive Zod Validation**:
   - **Input Validation**: Automatic validation of operation arguments with type-safe Zod schemas
   - **Output Selection Validation**: Validate field selection objects for GraphQL queries and mutations
@@ -271,6 +272,81 @@ mcpServer.registerTool(
 
 This ensures that AI systems and other consumers of your MCP tools have access to the original documentation from your GraphQL schema.
 
+## Selective Tool Generation
+
+GraphQL MCP Bridge provides flexible ways to control which operations are converted to MCP tools, allowing you to exclude specific operations from tool generation.
+
+### Using Ignore Phrases
+
+You can prevent specific GraphQL operations from being converted to MCP tools by including a special phrase in their description. By default, any operation containing `NO_MPC_TOOL` in its description will be skipped.
+
+```typescript
+const schema = `
+  type Query {
+    getUser(id: ID!): User
+
+    # This operation will be ignored and no tool will be generated
+    internalHealthCheck: String @deprecated(reason: "NO_MPC_TOOL - Internal use only")
+
+    # This will also be ignored
+    """
+    Administrative function for internal monitoring
+    NO_MPC_TOOL
+    """
+    adminDashboard: AdminStats
+
+    # This operation will be included as it doesn't contain the ignore phrase
+    getUsers: [User!]!
+  }
+`;
+
+const tools = await schemaParser(schema);
+// Only generates tools for: getUser, getUsers
+// Skips: internalHealthCheck, adminDashboard
+```
+
+### Custom Ignore Phrases
+
+You can customize the ignore phrase to match your naming conventions:
+
+```typescript
+const tools = await schemaParser(schema, {
+  ignorePhrase: 'INTERNAL_ONLY'
+});
+
+// Now any operation with 'INTERNAL_ONLY' in its description will be skipped
+const schemaWithCustomIgnore = `
+  type Query {
+    getUser(id: ID!): User
+
+    # This will be ignored
+    debugQuery: String # INTERNAL_ONLY - Debug purposes
+  }
+`;
+```
+
+### Alternative Approach: Schema Preprocessing
+
+Instead of using ignore phrases, you can preprocess your GraphQL schema to remove unwanted operations before passing it to the library:
+
+```typescript
+// Remove specific operations from schema string
+function removeInternalOperations(schemaString: string): string {
+  // Custom logic to filter out operations
+  // This approach gives you complete control over schema modification
+  return filteredSchema;
+}
+
+const cleanedSchema = removeInternalOperations(originalSchema);
+const tools = await schemaParser(cleanedSchema);
+```
+
+### Best Practices
+
+1. **Use Descriptive Ignore Phrases**: Choose phrases that clearly indicate why an operation should be ignored
+2. **Document Your Convention**: If using custom ignore phrases, document them in your team's GraphQL schema guidelines
+3. **Consider Schema Preprocessing**: For complex filtering logic, schema preprocessing might be more maintainable than ignore phrases
+
 ## Advanced Configuration Examples
 
 ### Selective Operation Types
@@ -326,6 +402,12 @@ export type Config = {
    * Default: ''
    */
   subscriptionPrefix?: string;
+
+  /**
+   * If a query or mutation has this phrase in its description, it will be ignored and no tool will be generated for it.
+   * Default: 'NO_MPC_TOOL'
+   */
+  ignorePhrase?: string;
 };
 ```
 
@@ -355,6 +437,13 @@ const allTools = await schemaParser(schema, {
 const mutationTools = await schemaParser(schema, {
   query: false,
   mutation: true
+});
+
+// Custom ignore phrase for selective tool generation
+const selectiveTools = await schemaParser(schema, {
+  query: true,
+  mutation: true,
+  ignorePhrase: 'INTERNAL_ONLY'
 });
 ```
 
@@ -866,6 +955,7 @@ type Config = {
   queryPrefix?: string;    // Prefix for query names (default: '')
   mutationPrefix?: string; // Prefix for mutation names (default: '')
   subscriptionPrefix?: string; // Prefix for subscription names (default: '')
+  ignorePhrase?: string;   // Ignore operations with this phrase in description (default: 'NO_MPC_TOOL')
 };
 ```
 

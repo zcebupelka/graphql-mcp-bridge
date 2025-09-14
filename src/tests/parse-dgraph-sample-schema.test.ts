@@ -149,6 +149,7 @@ type Posts {
 }
 
 """
+NO_MPC_TOOL
 """
 type DeleteUserPayload {
   """
@@ -2683,5 +2684,12 @@ describe("Dgraph Sample Schema", async () => {
         const operatorNames = parsedSchema.map(tool => tool.name);
         const duplicates = operatorNames.filter((name, index) => operatorNames.indexOf(name) !== index);
         assert.equal(duplicates.length, 0, `Found duplicate operator names: ${[...new Set(duplicates)].join(', ')}`);
-    })
+    });
+
+  describe("Should respect ignore phrase in the schema", () => {
+    // if the phrase NO_MCP_TOOL is in the description of the function, we should ignore it
+    // operation: DeleteUserPayload should not exist
+    const operatorNames = parsedSchema.map(tool => tool.name);
+    assert.equal(operatorNames.includes('DeleteUserPayload'), false, "DeleteUserPayload operator should be ignored due to NO_MCP_TOOL in description");
+  });
 });

@@ -50,6 +50,11 @@ export type Config = {
      * Default: empty string
      */
     subscriptionPrefix?: string
+    /**
+     * If a query or mutation has this phrase in its description, it will be ignored and no tool will be generated for it.
+     * default: 'NO_MPC_TOOL'
+     */
+    ignorePhrase?: string
 };
 
 const defaultConfig = {
@@ -58,7 +63,8 @@ const defaultConfig = {
     query: true,
     queryPrefix: '',
     mutationPrefix: '',
-    subscriptionPrefix: ''
+    subscriptionPrefix: '',
+    ignorePhrase: 'NO_MPC_TOOL'
 }
 
 export async function schemaParser(graphqlSchema: string, config: Config = defaultConfig): Promise<Tool[]> {
@@ -156,7 +162,9 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema, confi
         const fields = queryType.getFields();
         const queryPrefix = config.queryPrefix || '';
         for (const [fieldName, field] of Object.entries(fields)) {
-
+            if (field.description && config.ignorePhrase && field.description.includes(config.ignorePhrase)) {
+                continue; // Skip fields with the ignore phrase in their description
+            };
             const uniqueName = `query-${fieldName}`;
             if (operationsSet.has(uniqueName)) {
                 continue; // Skip duplicate operation names
@@ -176,6 +184,9 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema, confi
     if (mutationType && config.mutation == true) {
         const fields = mutationType.getFields();
         for (const [fieldName, field] of Object.entries(fields)) {
+            if (field.description && config.ignorePhrase && field.description.includes(config.ignorePhrase)) {
+                continue; // Skip fields with the ignore phrase in their description
+            };
             const mutationPrefix = config.mutationPrefix || '';
             const uniqueName = `mutation-${fieldName}`;
             if (operationsSet.has(uniqueName)) {
@@ -196,6 +207,9 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema, confi
     if (subscriptionType && config.subscription == true) {
         const fields = subscriptionType.getFields();
         for (const [fieldName, field] of Object.entries(fields)) {
+            if (field.description && config.ignorePhrase && field.description.includes(config.ignorePhrase)) {
+                continue; // Skip fields with the ignore phrase in their description
+            };
             const uniqueName = `subscription-${fieldName}`;
             const subscriptionPrefix = config.subscriptionPrefix || '';
             if (operationsSet.has(uniqueName)) {
