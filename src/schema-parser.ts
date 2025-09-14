@@ -215,48 +215,5 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema, confi
     return operations;
 }
 
-// Generate executable functions for each operation with validation
-// @deprecated Use schemaParser instead, which returns Tool[] with embedded functions
-export function generateOperationFunctions(
-    operations: any[],
-    endpoint: string,
-    validationSchemas: Record<string, z.ZodSchema>
-) {
-    const functions: Record<string, Function> = {};
-
-    for (const operation of operations) {
-        functions[operation.name] = async (variables: any = {}) => {
-            // Validate input variables using Zod schema
-            const validationSchema = validationSchemas[operation.name];
-            if (validationSchema) {
-                try {
-                    const validatedVariables = validationSchema.parse(variables);
-                    variables = validatedVariables;
-                } catch (error) {
-                    const errorMessage = error instanceof Error ? error.message : 'Unknown validation error';
-                    throw new Error(`Validation failed for ${operation.name}: ${errorMessage}`);
-                }
-            }
-
-            const query = generateQueryString(operation, variables);
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    query,
-                    variables
-                })
-            });
-
-            return response.json();
-        };
-    }
-
-    return functions;
-}
-
 // Re-export validation functions for convenience
 export { validateOperationArguments, validateOutputSelection };
