@@ -5,6 +5,8 @@
 [![codecov](https://codecov.io/github/pshaddel/graphql-mcp-bridge/graph/badge.svg?token=5DNFYP8N97)](https://codecov.io/github/pshaddel/graphql-mcp-bridge)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+[![npm version](https://img.shields.io/npm/v/graphql-mcp-bridge.svg)](https://www.npmjs.com/package/graphql-mcp-bridge)
+
 <div align="center">
   <img width="200" height="200" alt="logo-light" src="https://github.com/user-attachments/assets/fd1c1676-2486-41c1-bd8b-ba4250549ba8">
 </div>
