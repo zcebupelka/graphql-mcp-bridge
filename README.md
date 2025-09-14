@@ -117,6 +117,67 @@ console.log('Input schema:', userTool.inputSchema);
 console.log('Output schema:', userTool.outputSchema);
 ```
 
+## Integration Example
+
+Here's a simplified example of how to integrate the generated tools with an MCP server:
+
+```typescript
+import { schemaParser } from 'graphql-mcp-bridge';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
+
+export async function registerSchemaTools(
+  parsedSchema: Tool[],
+  mcpServer: McpServer,
+) {
+  for (const tool of parsedSchema) {
+    mcpServer.registerTool(
+      tool.name,
+      {
+        description: tool.description || "No description provided",
+        inputSchema: {
+          input: tool.inputSchema,
+          output: tool.outputSchema,
+        },
+      },
+      async ({ input, output }) => {
+        const res = await tool.execution(input, output);
+        const { data, error } = await queryRunner(res.query, res.variables);
+
+        if (error) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Error from GraphQL API: ${JSON.stringify(error, null, 2)}`,
+              },
+            ],
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(data, null, 2),
+            },
+          ],
+        };
+      },
+    );
+  }
+
+  console.info(
+    "Registered Tools:",
+    parsedSchema.map((s) => s.name),
+  );
+}
+
+// Usage
+const schema = `/* your GraphQL schema */`;
+const tools = await schemaParser(schema);
+await registerSchemaTools(tools, mcpServer);
+```
+
 ## Advanced Configuration Examples
 
 ### Selective Operation Types
