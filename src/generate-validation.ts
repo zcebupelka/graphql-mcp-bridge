@@ -1,11 +1,11 @@
-import pkg from 'graphql';
-const { buildSchema, GraphQLSchema, parse, validate, execute, isNonNullType, isListType, isScalarType, isEnumType, isInputObjectType, isObjectType, GraphQLInputObjectType, GraphQLEnumType, GraphQLScalarType, GraphQLObjectType } = pkg;
+import graphql from 'graphql';
+const { isNonNullType, isListType, isScalarType, isEnumType, isInputObjectType, isObjectType } = graphql;
 import { z } from 'zod';
 
 // Helper function to convert GraphQL type to Zod schema
 function graphqlTypeToZodSchema(
-    type: pkg.GraphQLType,
-    schema: pkg.GraphQLSchema,
+    type: graphql.GraphQLType,
+    schema: graphql.GraphQLSchema,
     visitedTypes: Set<string> = new Set()
 ): z.ZodTypeAny {
     if (isNonNullType(type)) {
@@ -111,7 +111,7 @@ function graphqlTypeToZodSchema(
 }
 
 // Generate Zod validation schemas for all operations
-export function generateValidationSchemas(operations: any[], schema: pkg.GraphQLSchema) {
+export function generateValidationSchemas(operations: any[], schema: graphql.GraphQLSchema) {
     const validationSchemas: Record<string, z.ZodSchema> = {};
 
     for (const operation of operations) {
@@ -163,8 +163,8 @@ export function generateValidationSchemas(operations: any[], schema: pkg.GraphQL
 //
 // All fields are optional because you might not want to select all available fields
 function graphqlOutputTypeToZodSelectionSchema(
-    type: pkg.GraphQLType,
-    schema: pkg.GraphQLSchema,
+    type: graphql.GraphQLType,
+    schema: graphql.GraphQLSchema,
     visitedTypes: Set<string> = new Set()
 ): z.ZodTypeAny {
     if (isNonNullType(type)) {
@@ -211,7 +211,7 @@ function graphqlOutputTypeToZodSelectionSchema(
 
 // Helper function to create default selection for first-layer scalar/enum fields
 function createDefaultSelection(
-    type: pkg.GraphQLType
+    type: graphql.GraphQLType
 ): Record<string, boolean> {
     const defaultSelection: Record<string, boolean> = {};
 
@@ -259,7 +259,7 @@ function createDefaultSelection(
 }
 
 // Generate Zod output selection schemas for all operations
-export function generateOutputSelectionSchemas(operations: any[], schema: pkg.GraphQLSchema) {
+export function generateOutputSelectionSchemas(operations: any[], schema: graphql.GraphQLSchema) {
     const outputSchemas: Record<string, z.ZodSchema> = {};
 
     for (const operation of operations) {
