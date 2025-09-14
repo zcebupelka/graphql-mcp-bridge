@@ -1,7 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
 import { schemaParser } from "../schema-parser.ts";
-
+const config = { query: true, subscription: true, mutation: true, subscriptionPrefix: 'subscription' };
 describe("Testing Different Schemas", () => {
     describe("Schema 1", () => {
         const schema = `
@@ -53,7 +53,7 @@ describe("Testing Different Schemas", () => {
         `;
 
         test("should parse schema 3 correctly", async () => {
-            const tools = await schemaParser(schema);
+            const tools = await schemaParser(schema, config);
             assert.ok(tools);
             assert.ok(Array.isArray(tools));
             assert.strictEqual(tools.length, 1);
@@ -63,7 +63,7 @@ describe("Testing Different Schemas", () => {
         });
 
         test("should throw error for missing required variables", async () => {
-            const tools = await schemaParser(schema);
+            const tools = await schemaParser(schema, config);
             await assert.rejects(
                 async () => {
                     await tools[0].execution({ a: 5 }, {});
@@ -101,7 +101,7 @@ describe("Testing Different Schemas", () => {
         `;
 
         test("should parse schema 4 correctly", async () => {
-            const tools = await schemaParser(schema);
+            const tools = await schemaParser(schema, config);
             assert.ok(tools);
             assert.ok(Array.isArray(tools));
             assert.strictEqual(tools.length, 2);

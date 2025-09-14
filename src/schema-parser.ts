@@ -15,10 +15,56 @@ export type Tool = {
     outputSchema: z.ZodType<any, any, any>;
 };
 
-export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
+export type Config = {
+    /**
+     * if `true` it generates functions for mutations as well.
+     */
+    mutation?: boolean
+    /**
+     * if `true` it generates functions for subscriptions as well.
+     * Default: false
+     * Note: Subscriptions are not yet fully supported in this version.
+     * You can generate the functions, but you need to handle the subscription logic (e.g., using WebSockets) yourself.
+    */
+    subscription?: boolean
+    /**
+     * if `true` it generates functions for queries as well.
+     * Default: true
+     */
+    query?: boolean
+    /**
+     * adds a phrase to name of your query functions.
+     * For example you have this query: `getUser` and the prefix is `QUERY_`, name of the function would be `QUERY_getUser`
+     * Default: empty string
+     */
+    queryPrefix?: string
+    /**
+     * adds a phrase to name of your mutation functions.
+     * For example you have this mutation: `createUser` and the prefix is `MUTATION_`, name of the function would be `MUTATION_createUser`
+     * Default: empty string
+     */
+    mutationPrefix?: string
+    /**
+     * adds a phrase to name of your subscription functions.
+     * For example you have this subscription: `onUserCreated` and the prefix is `SUBSCRIPTION_`, name of the function would be `SUBSCRIPTION_onUserCreated`
+     * Default: empty string
+     */
+    subscriptionPrefix?: string
+};
+
+const defaultConfig = {
+    mutation: false,
+    subscription: false,
+    query: true,
+    queryPrefix: '',
+    mutationPrefix: '',
+    subscriptionPrefix: ''
+}
+
+export async function schemaParser(graphqlSchema: string, config: Config = defaultConfig): Promise<Tool[]> {
     // Parse the schema
     const schema: graphql.GraphQLSchema = graphql.buildSchema(graphqlSchema);
-    const operations = extractOperationsFromSchema(schema);
+    const operations = extractOperationsFromSchema(schema, config);
     const validationSchemas = generateValidationSchemas(operations, schema);
     const outputSelectionSchemas = generateOutputSelectionSchemas(operations, schema);
 
@@ -67,17 +113,6 @@ export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
 
                 const query = generateQueryString(operation, variables, selectedFields);
 
-                // const response = await fetch(endpoint, {
-                //     method: 'POST',
-                //     headers: {
-                //         'Content-Type': 'application/json',
-                //     },
-                //     body: JSON.stringify({
-                //         query,
-                //         variables
-                //     })
-                // });
-
                 return { query, variables };
             },
             description: `GraphQL ${operation.type} operation: ${operation.name}`,
@@ -91,7 +126,7 @@ export async function schemaParser(graphqlSchema: string): Promise<Tool[]> {
     return tools;
 }
 
-export function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
+export function extractOperationsFromSchema(schema: graphql.GraphQLSchema, config: Config) {
     const queryType = schema.getQueryType();
     const mutationType = schema.getMutationType();
     const subscriptionType = schema.getSubscriptionType();
@@ -108,9 +143,11 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
     };
 
     // Extract queries
-    if (queryType) {
+    if (queryType && config.query != false) {
         const fields = queryType.getFields();
+        const queryPrefix = config.queryPrefix || '';
         for (const [fieldName, field] of Object.entries(fields)) {
+
             const uniqueName = `query-${fieldName}`;
             if (operationsSet.has(uniqueName)) {
                 continue; // Skip duplicate operation names
@@ -118,7 +155,7 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
             operationsSet.add(uniqueName);
             operations.push({
                 type: 'query',
-                name: fieldName,
+                name: `${queryPrefix}${fieldName}`,
                 field: field,
                 args: transformArgs(field.args)
             });
@@ -126,9 +163,10 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
     }
 
     // Extract mutations
-    if (mutationType) {
+    if (mutationType && config.mutation == true) {
         const fields = mutationType.getFields();
         for (const [fieldName, field] of Object.entries(fields)) {
+            const mutationPrefix = config.mutationPrefix || '';
             const uniqueName = `mutation-${fieldName}`;
             if (operationsSet.has(uniqueName)) {
                 continue; // Skip duplicate operation names
@@ -136,7 +174,7 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
             operationsSet.add(uniqueName);
             operations.push({
                 type: 'mutation',
-                name: fieldName,
+                name: `${mutationPrefix}${fieldName}`,
                 field: field,
                 args: transformArgs(field.args)
             });
@@ -144,17 +182,18 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema) {
     }
 
     // Extract subscriptions
-    if (subscriptionType) {
+    if (subscriptionType && config.subscription == true) {
         const fields = subscriptionType.getFields();
         for (const [fieldName, field] of Object.entries(fields)) {
             const uniqueName = `subscription-${fieldName}`;
+            const subscriptionPrefix = config.subscriptionPrefix || '';
             if (operationsSet.has(uniqueName)) {
                 continue; // Skip duplicate operation names
             }
             operationsSet.add(uniqueName);
             operations.push({
                 type: 'subscription',
-                name: uniqueName,
+                name: `${subscriptionPrefix}${fieldName}`,
                 field: field,
                 args: transformArgs(field.args)
             });

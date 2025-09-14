@@ -16,6 +16,10 @@ A powerful bridge implementation connecting GraphQL APIs with the Model Context 
 ## Features
 
 - 🔗 **GraphQL to MCP Bridge**: Convert GraphQL schemas to MCP-compatible function definitions
+- ⚙️ **Flexible Configuration**: Selective operation generation with customizable naming patterns
+  - **Operation Type Control**: Choose which operation types to include (queries, mutations, subscriptions)
+  - **Custom Prefixes**: Add prefixes to operation names for better organization
+  - **Granular Control**: Fine-tune which operations are exposed as MCP tools
 - 🛡️ **Comprehensive Zod Validation**:
   - **Input Validation**: Automatic validation of operation arguments with type-safe Zod schemas
   - **Output Selection Validation**: Validate field selection objects for GraphQL queries and mutations
@@ -31,7 +35,7 @@ A powerful bridge implementation connecting GraphQL APIs with the Model Context 
 - ⚡ **Runtime Safety**:
   - Built-in validation for all operations before execution
   - User-friendly error messages for validation failures
-  - Fallback handling for edge cases and malformed data Bridge
+  - Fallback handling for edge cases and malformed data
 
 ## Installation
 
@@ -82,8 +86,17 @@ const schema = `
   }
 `;
 
-// Convert to MCP tools
+// Convert to MCP tools (queries only by default)
 const tools = await schemaParser(schema);
+
+// Or with custom configuration to include mutations and subscriptions
+const toolsWithMutations = await schemaParser(schema, {
+  query: true,
+  mutation: true,
+  subscription: false,
+  queryPrefix: 'get_',
+  mutationPrefix: 'do_'
+});
 
 // Use the generated tools
 const userTool = tools.find(tool => tool.name === 'user');
@@ -100,6 +113,176 @@ console.log(result.query);
 // Access the validation schemas directly
 console.log('Input schema:', userTool.inputSchema);
 console.log('Output schema:', userTool.outputSchema);
+```
+
+## Advanced Configuration Examples
+
+### Selective Operation Types
+
+```typescript
+```
+
+## Configuration
+
+GraphQL MCP Bridge supports configurable operation generation through the `Config` type. This allows you to control which types of operations are included and customize their naming.
+
+### Configuration Options
+
+```typescript
+export type Config = {
+  /**
+   * Include mutation operations
+   * Default: false
+   */
+  mutation?: boolean;
+
+  /**
+   * Include subscription operations
+   * Default: false
+   * Note: Subscriptions are not yet fully supported. You can generate
+   * the functions, but need to handle subscription logic yourself.
+   */
+  subscription?: boolean;
+
+  /**
+   * Include query operations
+   * Default: true
+   */
+  query?: boolean;
+
+  /**
+   * Prefix for query operation names
+   * Example: 'get_' would turn 'user' into 'get_user'
+   * Default: ''
+   */
+  queryPrefix?: string;
+
+  /**
+   * Prefix for mutation operation names
+   * Example: 'do_' would turn 'createUser' into 'do_createUser'
+   * Default: ''
+   */
+  mutationPrefix?: string;
+
+  /**
+   * Prefix for subscription operation names
+   * Example: 'sub_' would turn 'userUpdated' into 'sub_userUpdated'
+   * Default: ''
+   */
+  subscriptionPrefix?: string;
+};
+```
+
+### Configuration Examples
+
+```typescript
+// Default configuration - queries only
+const tools = await schemaParser(schema);
+
+// Include mutations with custom prefixes
+const toolsWithMutations = await schemaParser(schema, {
+  query: true,
+  mutation: true,
+  queryPrefix: 'fetch_',
+  mutationPrefix: 'execute_'
+});
+
+// All operation types with subscription prefix
+const allTools = await schemaParser(schema, {
+  query: true,
+  mutation: true,
+  subscription: true,
+  subscriptionPrefix: 'listen_'
+});
+
+// Only mutations
+const mutationTools = await schemaParser(schema, {
+  query: false,
+  mutation: true
+});
+```
+
+## Practical Configuration Examples
+
+### Operation Type Selection
+
+```typescript
+const schema = `
+  type Query {
+    getUser(id: ID!): User
+    getUsers: [User!]!
+  }
+
+  type Mutation {
+    createUser(input: CreateUserInput!): User
+    updateUser(id: ID!, input: UpdateUserInput!): User
+  }
+
+  type Subscription {
+    userUpdated: User
+  }
+
+  type User {
+    id: ID!
+    username: String!
+  }
+
+  input CreateUserInput {
+    username: String!
+  }
+
+  input UpdateUserInput {
+    username: String
+  }
+`;
+
+// Only queries (default behavior)
+const queryTools = await schemaParser(schema);
+console.log(queryTools.map(t => t.name));
+// Output: ['getUser', 'getUsers']
+
+// Include mutations with prefix
+const mutationTools = await schemaParser(schema, {
+  query: true,
+  mutation: true,
+  mutationPrefix: 'execute_'
+});
+console.log(mutationTools.map(t => t.name));
+// Output: ['getUser', 'getUsers', 'execute_createUser', 'execute_updateUser']
+
+// All operations with custom prefixes
+const allTools = await schemaParser(schema, {
+  query: true,
+  mutation: true,
+  subscription: true,
+  queryPrefix: 'fetch_',
+  mutationPrefix: 'do_',
+  subscriptionPrefix: 'listen_'
+});
+console.log(allTools.map(t => t.name));
+// Output: ['fetch_getUser', 'fetch_getUsers', 'do_createUser', 'do_updateUser', 'listen_userUpdated']
+```
+
+### Custom Naming Patterns
+
+```typescript
+// API-style naming
+const apiTools = await schemaParser(schema, {
+  query: true,
+  mutation: true,
+  queryPrefix: 'api_get_',
+  mutationPrefix: 'api_post_'
+});
+
+// GraphQL operation type prefixes
+const typedTools = await schemaParser(schema, {
+  query: true,
+  mutation: true,
+  subscription: true,
+  queryPrefix: 'QUERY_',
+  mutationPrefix: 'MUTATION_',
+  subscriptionPrefix: 'SUBSCRIPTION_'
+});
 ```
 
 ## Validation System
@@ -255,7 +438,11 @@ const schema = `
   }
 `;
 
-const tools = await schemaParser(schema);
+// Enable mutations in configuration
+const tools = await schemaParser(schema, {
+  query: true,
+  mutation: true
+});
 const createUserTool = tools.find(tool => tool.name === 'createUser');
 
 // Valid input
@@ -495,22 +682,36 @@ try {
 
 ### Core Functions
 
-#### `schemaParser(graphqlSchema: string): Promise<Tool[]>`
+#### `schemaParser(graphqlSchema: string, config?: Config): Promise<Tool[]>`
 
 Parses a GraphQL schema string and returns an array of MCP-compatible tools with built-in validation and field selection.
 
 **Parameters:**
 
 - `graphqlSchema` (string): A valid GraphQL schema definition
+- `config` (Config, optional): Configuration object to control operation generation
 
 **Returns:**
 
 - `Promise<Tool[]>`: Array of MCP tools, each containing:
-  - `name`: Operation name
+  - `name`: Operation name (with optional prefix applied)
   - `execution(variables, selectedFields)`: Async function that returns `{ query, variables }`
   - `description`: Generated description of the operation
   - `inputSchema`: Zod schema for input validation
   - `outputSchema`: Zod schema for output field selection validation
+
+**Config Type:**
+
+```typescript
+type Config = {
+  mutation?: boolean;      // Include mutations (default: false)
+  subscription?: boolean;  // Include subscriptions (default: false)
+  query?: boolean;         // Include queries (default: true)
+  queryPrefix?: string;    // Prefix for query names (default: '')
+  mutationPrefix?: string; // Prefix for mutation names (default: '')
+  subscriptionPrefix?: string; // Prefix for subscription names (default: '')
+};
+```
 
 #### `generateQueryString(operation, variables?, selectedFields?): string`
 
@@ -672,7 +873,9 @@ try {
 ### Core Operations
 
 - ✅ **Queries and Mutations**: Full support for Query and Mutation operations with validation
-- ⚠️ **Subscriptions**: Not currently supported
+- ✅ **Subscriptions**: Configurable subscription support (function generation only - WebSocket handling required)
+- ✅ **Operation Selection**: Choose which operation types to include via configuration
+- ✅ **Custom Naming**: Configurable prefixes for operation names
 
 ### Type System
 
@@ -688,6 +891,8 @@ try {
 
 ### Advanced Features
 
+- ✅ **Configurable Operation Generation**: Selective inclusion of queries, mutations, and subscriptions
+- ✅ **Custom Operation Naming**: Configurable prefixes for operation names
 - ✅ **Nested Field Selection**: Deep object field selection with validation
 - ✅ **Circular References**: Safe handling without infinite recursion
 - ✅ **Default Selections**: Automatic selection of scalar/enum fields when no selection provided

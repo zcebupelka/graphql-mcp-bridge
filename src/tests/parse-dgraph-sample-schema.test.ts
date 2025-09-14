@@ -2276,7 +2276,12 @@ enum ErrorOrderable {
 `
 
 describe("Dgraph Sample Schema", async () => {
-    const parsedSchema = await schemaParser(dgraphExportedSchema);
+  const parsedSchema = await schemaParser(dgraphExportedSchema, {
+    query: true,
+    mutation: true,
+    subscription: true,
+    subscriptionPrefix: 'subscription-'
+  });
 
     test("Parse Dgraph Sample Schema", async () => {
         assert(parsedSchema!!);

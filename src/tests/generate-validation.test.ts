@@ -5,6 +5,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { validateOperationArguments } from '../generate-validation.ts';
 
+const config = { query: true, subscription: true, mutation: true, subscriptionPrefix: 'subscription' };
 type Tool = {
     name: string;
     execution: (variables: any, selectedFields: any) => Promise<{
@@ -24,7 +25,7 @@ describe('GraphQL Zod Validation', () => {
         const schemaPath = join(process.cwd(), 'src/tests/schema-samples/user-posts.graphql');
         const graphqlSchema = readFileSync(schemaPath, 'utf-8');
 
-        tools = await schemaParser(graphqlSchema);
+        tools = await schemaParser(graphqlSchema, config);
 
         // Extract validation schemas from tools for backward compatibility with existing tests
         validationSchemas = {};

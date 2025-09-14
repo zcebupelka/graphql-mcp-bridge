@@ -19,7 +19,7 @@ describe('generateOutputSelectionSchemas', () => {
         schema = buildSchema(graphqlSchemaString);
 
         // Extract operations
-        operations = extractOperationsFromSchema(schema);
+        operations = extractOperationsFromSchema(schema, { query: true, subscription: true, mutation: true, subscriptionPrefix: 'subscription' });
 
         // Generate output selection schemas
         outputSchemas = generateOutputSelectionSchemas(operations, schema);
