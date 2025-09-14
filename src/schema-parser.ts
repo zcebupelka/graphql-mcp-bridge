@@ -115,7 +115,7 @@ export async function schemaParser(graphqlSchema: string, config: Config = defau
 
                 return { query, variables };
             },
-            description: `GraphQL ${operation.type} operation: ${operation.name}`,
+            description: operation.description || `GraphQL ${operation.type} operation: ${operation.name}`,
             inputSchema: validationSchemas[operation.name] || z.object({}),
             outputSchema: outputSelectionSchemas[operation.name]
         };
@@ -131,7 +131,16 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema, confi
     const mutationType = schema.getMutationType();
     const subscriptionType = schema.getSubscriptionType();
 
-    const operations: any[] = [];
+    const operations: {
+        type: 'query' | 'mutation' | 'subscription';
+        name: string;
+        field: graphql.GraphQLField<any, any>;
+        args: {
+            name: string;
+            type: graphql.GraphQLType;
+        }[];
+        description: string;
+    }[] = [];
     const operationsSet = new Set<string>();
 
     // Helper function to convert GraphQL field args to our OperationArg format
@@ -157,7 +166,8 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema, confi
                 type: 'query',
                 name: `${queryPrefix}${fieldName}`,
                 field: field,
-                args: transformArgs(field.args)
+                args: transformArgs(field.args),
+                description: field.description || ''
             });
         }
     }
@@ -176,7 +186,8 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema, confi
                 type: 'mutation',
                 name: `${mutationPrefix}${fieldName}`,
                 field: field,
-                args: transformArgs(field.args)
+                args: transformArgs(field.args),
+                description: field.description || ''
             });
         }
     }
@@ -195,7 +206,8 @@ export function extractOperationsFromSchema(schema: graphql.GraphQLSchema, confi
                 type: 'subscription',
                 name: `${subscriptionPrefix}${fieldName}`,
                 field: field,
-                args: transformArgs(field.args)
+                args: transformArgs(field.args),
+                description: field.description || ''
             });
         }
     }

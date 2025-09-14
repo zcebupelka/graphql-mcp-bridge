@@ -1453,6 +1453,7 @@ type Subscription {
   getUserRank(UserRankID: ID!): UserRank
 
   """
+  Description
   """
   queryUserRank(
     filter: UserRankFilter
@@ -2658,6 +2659,23 @@ describe("Dgraph Sample Schema", async () => {
             const uniqueNames = new Set(names);
             // Allow some duplicate names as the schema might have subscription duplicates
             assert(uniqueNames.size >= names.length - 10, `Too many duplicate names. Unique: ${uniqueNames.size}, Total: ${names.length}`);
+        });
+    });
+
+    describe("Description Handling", () => {
+        test("Should preserve GraphQL field descriptions", async () => {
+            // Test with subscription since it includes fields with and without descriptions
+            const subscriptionTools = parsedSchema.filter(tool => tool.name.includes('UserRank'));
+
+            // Find the queryUserRank tool which should have "Description" as its description
+            const queryUserRankTool = subscriptionTools.find(tool => tool.name === 'subscription-queryUserRank');
+            assert.ok(queryUserRankTool, "subscription-queryUserRank tool should exist");
+            assert.equal(queryUserRankTool.description, "Description", "Should preserve field description from GraphQL schema");
+
+            // Find a tool without description (like getUserRank) which should have fallback description
+            const getUserRankTool = subscriptionTools.find(tool => tool.name === 'subscription-getUserRank');
+            assert.ok(getUserRankTool, "subscription-getUserRank tool should exist");
+            assert.ok(getUserRankTool.description.includes("GraphQL"), "Should have fallback description for fields without description");
         });
     });
 

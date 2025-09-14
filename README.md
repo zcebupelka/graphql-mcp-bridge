@@ -18,6 +18,7 @@ A powerful bridge implementation connecting GraphQL APIs with the Model Context 
 ## Features
 
 - 🔗 **GraphQL to MCP Bridge**: Convert GraphQL schemas to MCP-compatible function definitions
+- 📝 **Description Preservation**: Automatically preserves GraphQL field descriptions as tool descriptions
 - ⚙️ **Flexible Configuration**: Selective operation generation with customizable naming patterns
   - **Operation Type Control**: Choose which operation types to include (queries, mutations, subscriptions)
   - **Custom Prefixes**: Add prefixes to operation names for better organization
@@ -74,11 +75,21 @@ const schema = `
   }
 
   type Query {
+    """
+    Retrieves a user by their unique identifier
+    """
     user(id: ID!): User
+
+    """
+    Fetches a list of posts with optional limit
+    """
     posts(limit: Int): [Post!]!
   }
 
   type Mutation {
+    """
+    Creates a new user account
+    """
     createUser(input: CreateUserInput!): User
   }
 
@@ -103,6 +114,10 @@ const toolsWithMutations = await schemaParser(schema, {
 // Use the generated tools
 const userTool = tools.find(tool => tool.name === 'user');
 
+// Access the preserved description from GraphQL schema
+console.log(userTool.description);
+// Output: "Retrieves a user by their unique identifier"
+
 // The tool automatically validates inputs and field selections
 const result = await userTool.execution(
   { id: "123" }, // Variables - validated against input schema
@@ -115,6 +130,7 @@ console.log(result.query);
 // Access the validation schemas directly
 console.log('Input schema:', userTool.inputSchema);
 console.log('Output schema:', userTool.outputSchema);
+console.log('Description:', userTool.description); // GraphQL field description
 ```
 
 ## Integration Example
@@ -177,6 +193,81 @@ const schema = `/* your GraphQL schema */`;
 const tools = await schemaParser(schema);
 await registerSchemaTools(tools, mcpServer);
 ```
+
+## Description Preservation
+
+GraphQL MCP Bridge automatically preserves GraphQL field descriptions and exposes them as tool descriptions. This feature ensures that documentation from your GraphQL schema is carried over to the generated MCP tools.
+
+### How It Works
+
+```typescript
+const schema = `
+  type Query {
+    """
+    Retrieves user information by ID
+    Supports fetching related posts and profile data
+    """
+    getUser(id: ID!): User
+
+    """
+    Lists all users with pagination support
+    """
+    getUsers(limit: Int, offset: Int): [User!]!
+
+    # This field has no description
+    healthCheck: String
+  }
+
+  type User {
+    id: ID!
+    username: String!
+  }
+`;
+
+const tools = await schemaParser(schema);
+
+// Description is preserved from GraphQL schema
+const getUserTool = tools.find(tool => tool.name === 'getUser');
+console.log(getUserTool.description);
+// Output: "Retrieves user information by ID\nSupports fetching related posts and profile data"
+
+const getUsersTool = tools.find(tool => tool.name === 'getUsers');
+console.log(getUsersTool.description);
+// Output: "Lists all users with pagination support"
+
+// Fallback description for fields without documentation
+const healthCheckTool = tools.find(tool => tool.name === 'healthCheck');
+console.log(healthCheckTool.description);
+// Output: "GraphQL query operation: healthCheck"
+```
+
+### Description Fallbacks
+
+When a GraphQL field doesn't have a description, the system provides a meaningful fallback:
+
+- **Queries**: `"GraphQL query operation: {fieldName}"`
+- **Mutations**: `"GraphQL mutation operation: {fieldName}"`
+- **Subscriptions**: `"GraphQL subscription operation: {fieldName}"`
+
+### Integration with MCP Servers
+
+The preserved descriptions integrate seamlessly with MCP servers:
+
+```typescript
+mcpServer.registerTool(
+  tool.name,
+  {
+    description: tool.description, // Uses GraphQL field description or fallback
+    inputSchema: tool.inputSchema,
+    outputSchema: tool.outputSchema,
+  },
+  async ({ input, output }) => {
+    // Tool execution logic
+  }
+);
+```
+
+This ensures that AI systems and other consumers of your MCP tools have access to the original documentation from your GraphQL schema.
 
 ## Advanced Configuration Examples
 
@@ -759,7 +850,7 @@ Parses a GraphQL schema string and returns an array of MCP-compatible tools with
 - `Promise<Tool[]>`: Array of MCP tools, each containing:
   - `name`: Operation name (with optional prefix applied)
   - `execution(variables, selectedFields)`: Async function that returns `{ query, variables }`
-  - `description`: Generated description of the operation
+  - `description`: GraphQL field description or auto-generated fallback description
   - `inputSchema`: Zod schema for input validation
   - `outputSchema`: Zod schema for output field selection validation
 
@@ -855,9 +946,9 @@ type Tool = {
     query: string;
     variables: any;
   }>;
-  description?: string;
-  inputSchema?: z.ZodTypeAny;
-  outputSchema?: z.ZodTypeAny;
+  description: string; // GraphQL field description or auto-generated fallback
+  inputSchema: z.ZodTypeAny;
+  outputSchema: z.ZodTypeAny;
 };
 ```
 
@@ -939,6 +1030,7 @@ try {
 - ✅ **Subscriptions**: Configurable subscription support (function generation only - WebSocket handling required)
 - ✅ **Operation Selection**: Choose which operation types to include via configuration
 - ✅ **Custom Naming**: Configurable prefixes for operation names
+- ✅ **Description Preservation**: Automatically preserves GraphQL field descriptions as tool descriptions
 
 ### Type System
 
