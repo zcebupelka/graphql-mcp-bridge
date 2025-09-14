@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        .logo-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 400px;
+            height: 400px;
+        }
+
+        .graphql-logo {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            opacity: 0.8;
+            animation: spin 10s linear infinite;
+            z-index: 1;
+        }
+
+        .mcp-logo {
+            position: relative;
+            width: 150px;
+            height: auto;
+            z-index: 2;
+            filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.3));
+        }
+
+        .title {
+            position: absolute;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            z-index: 3;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Hover effect */
+        .logo-container:hover .graphql-logo {
+            animation-duration: 2s;
+            opacity: 1;
+        }
+
+        .logo-container:hover .mcp-logo {
+            transform: scale(1.1);
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo-container">
+        <img src="graphql-logo.svg" alt="GraphQL Logo" class="graphql-logo">
+        <img src="mcp-logo.png" alt="MCP Logo" class="mcp-logo">
+    </div>
+</body>
+</html>
