@@ -11,8 +11,8 @@ export type Tool = {
         variables: any;
     }>;
     description: string;
-    inputSchema: z.ZodType<any, any, any>;
-    outputSchema: z.ZodType<any, any, any>;
+    inputSchema: any;
+    outputSchema: any;
 };
 
 export type Config = {
