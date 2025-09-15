@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { schemaParser } from '../schema-parser.ts';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { validateOperationArguments } from '../generate-validation.ts';
+import { generateOutputSelectionSchemas, validateOperationArguments } from '../generate-validation.ts';
 
 const config = { query: true, subscription: true, mutation: true, subscriptionPrefix: 'subscription' };
 type Tool = {
@@ -19,7 +19,6 @@ type Tool = {
 describe('GraphQL Zod Validation', () => {
     let tools: Tool[];
     let validationSchemas: Record<string, any>;
-
     // Setup: Parse schema before running tests
     test('should parse GraphQL schema and generate tools with validation schemas', async () => {
         const schemaPath = join(process.cwd(), 'src/tests/schema-samples/user-posts.graphql');

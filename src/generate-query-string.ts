@@ -33,6 +33,7 @@ function buildFieldSelectionString(selection: FieldSelection): string {
                     fields.push(`... on ${fieldName} { ${nestedFields} }`);
                 }
             } else {
+
                 // Regular nested object selection
                 const nestedFields = buildFieldSelectionString(value);
                 if (nestedFields) {

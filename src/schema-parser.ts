@@ -153,6 +153,28 @@ export async function schemaParser(graphqlSchema: string, config: Config = defau
                     }
                 }
 
+                // Validate and apply defaults to output selection
+                const outputSchema = outputSelectionSchemas[operation.name];
+                if (outputSchema) {
+                    try {
+                        selectedFields = outputSchema.parse(selectedFields);
+                    } catch (error) {
+                        // For now, we'll be lenient and just log the error instead of failing
+                        // This preserves backwards compatibility while still applying defaults when possible
+                        console.warn(`Output selection validation warning for ${operation.name}:`, error instanceof Error ? error.message : error);
+
+                        // If validation fails but selectedFields is empty, try to apply defaults manually
+                        if (!selectedFields || (typeof selectedFields === 'object' && Object.keys(selectedFields).length === 0)) {
+                            try {
+                                selectedFields = outputSchema.parse({});
+                            } catch (defaultError) {
+                                // If even defaults fail, continue with the original selection
+                                // This ensures we don't break existing functionality
+                            }
+                        }
+                    }
+                }
+
                 const query = generateQueryString(operation, variables, selectedFields);
 
                 return { query, variables };

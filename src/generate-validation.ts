@@ -340,6 +340,12 @@ function createDefaultSelection(
         const fields = coreType.getFields();
 
         for (const [fieldName, field] of Object.entries(fields)) {
+            // Skip fields that have required arguments
+            const hasRequiredArgs = field.args.some(arg => isNonNullType(arg.type));
+            if (hasRequiredArgs) {
+                continue; // Skip this field as it cannot be included in default selection
+            }
+
             let fieldType = field.type;
 
             // Unwrap NonNull types
@@ -384,7 +390,7 @@ export function generateOutputSelectionSchemas(operations: any[], schema: graphq
             const returnType = operation.field.type;
             const selectionSchema = graphqlOutputTypeToZodSelectionSchema(returnType, schema, new Set(), 0, options);
 
-            // Create default selection for first-layer scalar/enum fields
+            // Create default selection for first-layer scalar/enum fields that have no arguments
             const defaultSelection = createDefaultSelection(returnType);
 
             // Transform the schema to apply defaults when selection is empty or undefined

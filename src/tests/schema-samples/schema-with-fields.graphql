@@ -1,0 +1,62 @@
+type Query {
+  user(id: ID!): User
+  userByEmail(email: String!): User
+  searchUsers(
+    """
+    The search term to filter users by name or username
+    """
+    query: String!
+    """
+    Maximum number of results to return
+    """
+    limit: Int = 10
+  ): [User!]!
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+
+  hasPermission(
+    """
+    The resource to check permission for
+    """
+    resource: String!
+    """
+    The action to check permission for
+    """
+    action: String!
+  ): Boolean!
+
+  posts(
+    """
+    Filter posts by status
+    """
+    status: PostStatus!
+    """
+    Number of posts to return
+    """
+    first: Int = 20
+  ): [Post!]!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  author: User!
+
+  isVisibleTo(
+    """
+    The user ID to check visibility for
+    """
+    userId: ID!
+  ): Boolean!
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
