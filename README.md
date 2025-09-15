@@ -408,6 +408,34 @@ export type Config = {
    * Default: 'NO_MPC_TOOL'
    */
   ignorePhrase?: string;
+
+  /**
+   * Maximum number of operations to process to prevent memory exhaustion.
+   * Useful for very large GraphQL schemas like GitHub's.
+   * Default: 200
+   */
+  maxOperations?: number;
+
+  /**
+   * Maximum number of arguments per operation to process.
+   * Limits processing of operations with excessive arguments.
+   * Default: 50
+   */
+  maxOperationArgs?: number;
+
+  /**
+   * Maximum schema processing depth to prevent stack overflow.
+   * Controls how deeply nested types are processed.
+   * Default: 10
+   */
+  maxSchemaDepth?: number;
+
+  /**
+   * Maximum number of fields per type to process.
+   * Limits processing of types with excessive fields.
+   * Default: 100
+   */
+  maxFields?: number;
 };
 ```
 
@@ -444,6 +472,26 @@ const selectiveTools = await schemaParser(schema, {
   query: true,
   mutation: true,
   ignorePhrase: 'INTERNAL_ONLY'
+});
+
+// Memory optimization for large schemas
+const optimizedTools = await schemaParser(schema, {
+  query: true,
+  mutation: true,
+  maxOperations: 100,        // Process only first 100 operations
+  maxOperationArgs: 25,      // Limit to 25 arguments per operation
+  maxSchemaDepth: 5,         // Limit nested type depth
+  maxFields: 50              // Limit fields per type
+});
+
+// Configuration for very large schemas (like GitHub GraphQL API)
+const githubOptimized = await schemaParser(githubSchema, {
+  query: true,
+  mutation: false,           // Skip mutations for faster processing
+  maxOperations: 50,         // Very conservative limit
+  maxSchemaDepth: 3,         // Shallow processing
+  maxFields: 20,             // Conservative field limit
+  ignorePhrase: 'DEPRECATED' // Skip deprecated operations
 });
 ```
 
@@ -644,6 +692,73 @@ await getUserTool.execution({ id: "123" }, {
 - ✅ **Circular References**: Safe handling without infinite recursion
 - ✅ **Union Types**: Validation for fragment selections
 - ✅ **Interface Types**: Validation for interface implementations
+
+## Memory Optimization for Large Schemas
+
+When working with very large GraphQL schemas (like GitHub's 70K+ line schema), memory optimization becomes crucial. The library provides several configuration options to prevent JavaScript heap out of memory errors:
+
+### Memory Optimization Options
+
+- **`maxOperations`**: Limits the number of operations processed (default: 200)
+- **`maxOperationArgs`**: Limits arguments per operation (default: 50)
+- **`maxSchemaDepth`**: Prevents deep recursion in nested types (default: 10)
+- **`maxFields`**: Limits fields processed per type (default: 100)
+
+### Example: GitHub GraphQL API
+
+```typescript
+import { schemaParser } from 'graphql-mcp-bridge';
+
+// Optimized configuration for GitHub's large schema
+const tools = await schemaParser(githubSchema, {
+  query: true,
+  mutation: false,           // Skip mutations for faster processing
+  maxOperations: 100,        // Process only essential operations
+  maxSchemaDepth: 5,         // Limit depth to prevent stack overflow
+  maxFields: 30,             // Conservative field limit
+  maxOperationArgs: 20,      // Limit complex operation arguments
+  ignorePhrase: 'DEPRECATED' // Skip deprecated operations
+});
+
+console.log(`Generated ${tools.length} tools from large schema`);
+```
+
+### Memory-Efficient Batch Processing
+
+For extremely large schemas, use the memory-efficient batch parser:
+
+```typescript
+import { parseSchemaInBatches } from 'graphql-mcp-bridge';
+
+// Process in small batches with memory cleanup
+const tools = await parseSchemaInBatches(massiveSchema, {
+  query: true,
+  batchSize: 25,              // Process 25 operations at a time
+  clearCacheInterval: 50,     // Clear cache every 50 operations
+  maxOperations: 200,         // Total operations limit
+  maxSchemaDepth: 3           // Very shallow processing
+});
+```
+
+### Memory Management Utilities
+
+```typescript
+import { clearTypeSchemaCache, getTypeSchemaCacheSize } from 'graphql-mcp-bridge';
+
+// Monitor cache size
+console.log(`Cache contains ${getTypeSchemaCacheSize()} schemas`);
+
+// Clear cache to free memory
+clearTypeSchemaCache();
+```
+
+### Performance Tips
+
+1. **Start Conservative**: Begin with low limits and increase as needed
+2. **Skip Complex Operations**: Use `ignorePhrase` to skip complex or deprecated operations
+3. **Limit Operation Types**: Process only queries for read-only use cases
+4. **Monitor Memory**: Use Node.js `--max-old-space-size` flag if needed
+5. **Batch Processing**: Use `parseSchemaInBatches` for schemas over 10K lines
 
 ## Advanced Usage Examples
 

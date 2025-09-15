@@ -4,7 +4,9 @@ import {
   generateValidationSchemas,
   generateOutputSelectionSchemas,
   validateOutputSelection,
-  validateOperationArguments
+  validateOperationArguments,
+  clearTypeSchemaCache,
+  getTypeSchemaCacheSize
 } from "./generate-validation.ts";
 
 // Main exports
@@ -18,5 +20,7 @@ export {
   generateValidationSchemas,
   generateOutputSelectionSchemas,
   validateOutputSelection,
-  validateOperationArguments
+  validateOperationArguments,
+  clearTypeSchemaCache,
+  getTypeSchemaCacheSize
 };

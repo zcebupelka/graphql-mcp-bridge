@@ -55,6 +55,26 @@ export type Config = {
      * default: 'NO_MPC_TOOL'
      */
     ignorePhrase?: string
+    /**
+     * Maximum number of operations to process to prevent memory exhaustion.
+     * Default: 200
+     */
+    maxOperations?: number
+    /**
+     * Maximum number of arguments per operation to process.
+     * Default: 50
+     */
+    maxOperationArgs?: number
+    /**
+     * Maximum schema processing depth to prevent stack overflow.
+     * Default: 10
+     */
+    maxSchemaDepth?: number
+    /**
+     * Maximum number of fields per type to process.
+     * Default: 100
+     */
+    maxFields?: number
 };
 
 const defaultConfig = {
@@ -64,20 +84,36 @@ const defaultConfig = {
     queryPrefix: '',
     mutationPrefix: '',
     subscriptionPrefix: '',
-    ignorePhrase: 'NO_MPC_TOOL'
+    ignorePhrase: 'NO_MPC_TOOL',
+    maxOperations: 200,
+    maxOperationArgs: 50,
+    maxSchemaDepth: 10,
+    maxFields: 100
 }
 
 export async function schemaParser(graphqlSchema: string, config: Config = defaultConfig): Promise<Tool[]> {
     // Parse the schema
     const schema: graphql.GraphQLSchema = graphql.buildSchema(graphqlSchema);
     const operations = extractOperationsFromSchema(schema, config);
-    const validationSchemas = generateValidationSchemas(operations, schema);
-    const outputSelectionSchemas = generateOutputSelectionSchemas(operations, schema);
 
-    // Generate tools array
+    // Apply memory optimization limits
+    const validationOptions = {
+        maxOperations: config.maxOperations || 200,
+        maxFields: config.maxFields || 100,
+        maxOperationArgs: config.maxOperationArgs || 50,
+        maxSchemaDepth: config.maxSchemaDepth || 10
+    };
+
+    const validationSchemas = generateValidationSchemas(operations, schema, validationOptions);
+    const outputSelectionSchemas = generateOutputSelectionSchemas(operations, schema, validationOptions);
+
+    // Generate tools array with memory optimization
     const tools: Tool[] = [];
+    const maxTools = config.maxOperations || 200;
 
-    for (const operation of operations) {
+    for (let i = 0; i < Math.min(operations.length, maxTools); i++) {
+        const operation = operations[i];
+
         const tool: Tool = {
             name: operation.name,
             execution: async (variables: any = {}, selectedFields: any = {}) => {

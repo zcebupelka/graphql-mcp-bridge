@@ -2,18 +2,48 @@ import graphql from 'graphql';
 const { isNonNullType, isListType, isScalarType, isEnumType, isInputObjectType, isObjectType } = graphql;
 import { z } from 'zod';
 
+// Type for validation options passed from config
+export type ValidationOptions = {
+    maxOperations?: number;
+    maxFields?: number;
+    maxOperationArgs?: number;
+    maxSchemaDepth?: number;
+};
+
+// Memory optimization: Global cache for type schemas to avoid recomputing
+const typeSchemaCache = new Map<string, z.ZodTypeAny>();
+
+// Utility function to clear the cache (useful for testing or memory management)
+export function clearTypeSchemaCache() {
+    typeSchemaCache.clear();
+}
+
+// Utility function to get cache size (for monitoring)
+export function getTypeSchemaCacheSize() {
+    return typeSchemaCache.size;
+}
+
 // Helper function to convert GraphQL type to Zod schema
 function graphqlTypeToZodSchema(
     type: graphql.GraphQLType,
     schema: graphql.GraphQLSchema,
-    visitedTypes: Set<string> = new Set()
+    visitedTypes: Set<string> = new Set(),
+    depth: number = 0,
+    options: ValidationOptions = {}
 ): z.ZodTypeAny {
+    const maxSchemaDepth = options.maxSchemaDepth || 10;
+    const maxFields = options.maxFields || 100;
+
+    // Prevent excessive depth that can cause memory issues
+    if (depth > maxSchemaDepth) {
+        return z.any().optional();
+    }
     if (isNonNullType(type)) {
-        return graphqlTypeToZodSchema(type.ofType, schema, visitedTypes);
+        return graphqlTypeToZodSchema(type.ofType, schema, visitedTypes, depth + 1, options);
     }
 
     if (isListType(type)) {
-        const itemSchema = graphqlTypeToZodSchema(type.ofType, schema, visitedTypes);
+        const itemSchema = graphqlTypeToZodSchema(type.ofType, schema, visitedTypes, depth + 1, options);
         return z.array(itemSchema);
     }
 
@@ -35,6 +65,12 @@ function graphqlTypeToZodSchema(
     }
 
     if (isEnumType(type)) {
+        // Use cache for enum types to avoid recreating them
+        const cacheKey = `enum_${type.name}`;
+        if (typeSchemaCache.has(cacheKey)) {
+            return typeSchemaCache.get(cacheKey)!;
+        }
+
         try {
             // Prevent circular references
             if (visitedTypes.has(type.name)) {
@@ -47,34 +83,52 @@ function graphqlTypeToZodSchema(
 
             // Handle empty enum case
             if (values.length === 0) {
-                return z.string();
+                const schema = z.string();
+                typeSchemaCache.set(cacheKey, schema);
+                return schema;
             }
 
             // Handle single value enum case
             if (values.length === 1) {
-                return z.literal(values[0]);
+                const schema = z.literal(values[0]);
+                typeSchemaCache.set(cacheKey, schema);
+                return schema;
             }
 
             // Try to create the enum, but fallback if it fails
             try {
-                return z.enum(values as [string, ...string[]]);
+                const schema = z.enum(values as [string, ...string[]]);
+                typeSchemaCache.set(cacheKey, schema);
+                return schema;
             } catch (enumError) {
                 console.warn(`Failed to create Zod enum for ${type.name}:`, enumError);
                 const literals = values.map(v => z.literal(v));
                 if (literals.length === 1) {
-                    return literals[0];
+                    const schema = literals[0];
+                    typeSchemaCache.set(cacheKey, schema);
+                    return schema;
                 }
-                return z.union([literals[0], literals[1], ...literals.slice(2)] as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+                const schema = z.union([literals[0], literals[1], ...literals.slice(2)] as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+                typeSchemaCache.set(cacheKey, schema);
+                return schema;
             }
         } catch (error) {
             console.warn(`Error processing enum ${type.name}:`, error);
-            return z.string(); // fallback
+            const fallbackSchema = z.string();
+            typeSchemaCache.set(cacheKey, fallbackSchema);
+            return fallbackSchema;
         } finally {
             visitedTypes.delete(type.name);
         }
     }
 
     if (isInputObjectType(type)) {
+        // Use cache for input object types
+        const cacheKey = `input_${type.name}`;
+        if (typeSchemaCache.has(cacheKey)) {
+            return typeSchemaCache.get(cacheKey)!;
+        }
+
         // Prevent circular references
         if (visitedTypes.has(type.name)) {
             return z.object({}).optional(); // fallback for circular references
@@ -86,8 +140,11 @@ function graphqlTypeToZodSchema(
             const fields = type.getFields();
             const zodObject: Record<string, z.ZodTypeAny> = {};
 
-            for (const [fieldName, field] of Object.entries(fields)) {
-                let fieldSchema = graphqlTypeToZodSchema(field.type, schema, visitedTypes);
+            // Limit the number of fields processed to prevent memory exhaustion
+            const fieldEntries = Object.entries(fields);
+
+            for (const [fieldName, field] of fieldEntries.slice(0, maxFields)) {
+                let fieldSchema = graphqlTypeToZodSchema(field.type, schema, visitedTypes, depth + 1, options);
 
                 // Make field optional if it's nullable
                 if (!isNonNullType(field.type)) {
@@ -97,10 +154,19 @@ function graphqlTypeToZodSchema(
                 zodObject[fieldName] = fieldSchema;
             }
 
-            return z.object(zodObject);
+            // If we had to truncate fields, log a warning
+            if (fieldEntries.length > maxFields) {
+                console.warn(`Input type ${type.name} has ${fieldEntries.length} fields, truncated to ${maxFields} for memory optimization`);
+            }
+
+            const zodSchema = z.object(zodObject);
+            typeSchemaCache.set(cacheKey, zodSchema);
+            return zodSchema;
         } catch (error) {
             console.warn(`Error processing input object ${type.name}:`, error);
-            return z.object({}).optional(); // fallback
+            const fallbackSchema = z.object({}).optional();
+            typeSchemaCache.set(cacheKey, fallbackSchema);
+            return fallbackSchema;
         } finally {
             visitedTypes.delete(type.name);
         }
@@ -111,15 +177,31 @@ function graphqlTypeToZodSchema(
 }
 
 // Generate Zod validation schemas for all operations
-export function generateValidationSchemas(operations: any[], schema: graphql.GraphQLSchema) {
+export function generateValidationSchemas(operations: any[], schema: graphql.GraphQLSchema, options: ValidationOptions = {}) {
     const validationSchemas: Record<string, z.ZodSchema> = {};
+    const maxOperations = options.maxOperations || 200; // Limit operations to prevent memory exhaustion
+    const maxArgs = options.maxOperationArgs || 50;
 
-    for (const operation of operations) {
+    // Process operations in batches to manage memory
+    const operationsToProcess = operations.slice(0, maxOperations);
+
+    if (operations.length > maxOperations) {
+        console.warn(`Schema has ${operations.length} operations, processing only ${maxOperations} for memory optimization`);
+    }
+
+    for (const operation of operationsToProcess) {
         if (operation.args && operation.args.length > 0) {
             const zodObject: Record<string, z.ZodTypeAny> = {};
 
-            for (const arg of operation.args) {
-                let argSchema = graphqlTypeToZodSchema(arg.type, schema, new Set());
+            // Limit arguments processed per operation
+            const argsToProcess = operation.args.slice(0, maxArgs);
+
+            if (operation.args.length > maxArgs) {
+                console.warn(`Operation ${operation.name} has ${operation.args.length} arguments, processing only ${maxArgs} for memory optimization`);
+            }
+
+            for (const arg of argsToProcess) {
+                let argSchema = graphqlTypeToZodSchema(arg.type, schema, new Set(), 0, options);
 
                 // Make argument optional if it's nullable
                 if (!isNonNullType(arg.type)) {
@@ -165,14 +247,24 @@ export function generateValidationSchemas(operations: any[], schema: graphql.Gra
 function graphqlOutputTypeToZodSelectionSchema(
     type: graphql.GraphQLType,
     schema: graphql.GraphQLSchema,
-    visitedTypes: Set<string> = new Set()
+    visitedTypes: Set<string> = new Set(),
+    depth: number = 0,
+    options: ValidationOptions = {}
 ): z.ZodTypeAny {
+    const maxSchemaDepth = options.maxSchemaDepth || 10;
+    const maxFields = options.maxFields || 50; // Use a lower limit for output selection
+
+    // Prevent excessive depth that can cause memory issues
+    if (depth > maxSchemaDepth) {
+        return z.boolean().optional();
+    }
+
     if (isNonNullType(type)) {
-        return graphqlOutputTypeToZodSelectionSchema(type.ofType, schema, visitedTypes);
+        return graphqlOutputTypeToZodSelectionSchema(type.ofType, schema, visitedTypes, depth + 1, options);
     }
 
     if (isListType(type)) {
-        const itemSchema = graphqlOutputTypeToZodSelectionSchema(type.ofType, schema, visitedTypes);
+        const itemSchema = graphqlOutputTypeToZodSelectionSchema(type.ofType, schema, visitedTypes, depth + 1, options);
         return itemSchema; // For selection schemas, we don't need to wrap in array
     }
 
@@ -182,6 +274,12 @@ function graphqlOutputTypeToZodSelectionSchema(
     }
 
     if (isObjectType(type)) {
+        // Use cache for output object types
+        const cacheKey = `output_${type.name}_${depth}`;
+        if (typeSchemaCache.has(cacheKey)) {
+            return typeSchemaCache.get(cacheKey)!;
+        }
+
         // Prevent infinite recursion for circular references
         if (visitedTypes.has(type.name)) {
             return z.object({}).optional();
@@ -192,17 +290,28 @@ function graphqlOutputTypeToZodSelectionSchema(
         const fields = type.getFields();
         const zodObject: Record<string, z.ZodTypeAny> = {};
 
-        for (const [fieldName, field] of Object.entries(fields)) {
+        // Limit fields processed to prevent memory exhaustion
+        const fieldEntries = Object.entries(fields);
+
+        for (const [fieldName, field] of fieldEntries.slice(0, maxFields)) {
             const fieldSelectionSchema = graphqlOutputTypeToZodSelectionSchema(
                 field.type,
                 schema,
-                new Set(visitedTypes) // Create a copy to avoid mutation issues
+                new Set(visitedTypes), // Create a copy to avoid mutation issues
+                depth + 1,
+                options
             );
             zodObject[fieldName] = fieldSelectionSchema;
         }
 
+        if (fieldEntries.length > maxFields) {
+            console.warn(`Output type ${type.name} has ${fieldEntries.length} fields, truncated to ${maxFields} for memory optimization`);
+        }
+
         visitedTypes.delete(type.name);
-        return z.object(zodObject).strict().optional();
+        const resultSchema = z.object(zodObject).strict().optional();
+        typeSchemaCache.set(cacheKey, resultSchema);
+        return resultSchema;
     }
 
     // Fallback for other types
@@ -259,26 +368,40 @@ function createDefaultSelection(
 }
 
 // Generate Zod output selection schemas for all operations
-export function generateOutputSelectionSchemas(operations: any[], schema: graphql.GraphQLSchema) {
+export function generateOutputSelectionSchemas(operations: any[], schema: graphql.GraphQLSchema, options: ValidationOptions = {}) {
     const outputSchemas: Record<string, z.ZodSchema> = {};
+    const maxOperations = options.maxOperations || 200;
 
-    for (const operation of operations) {
-        const returnType = operation.field.type;
-        const selectionSchema = graphqlOutputTypeToZodSelectionSchema(returnType, schema);
+    // Process operations in batches to manage memory
+    const operationsToProcess = operations.slice(0, maxOperations);
 
-        // Create default selection for first-layer scalar/enum fields
-        const defaultSelection = createDefaultSelection(returnType);
+    if (operations.length > maxOperations) {
+        console.warn(`Schema has ${operations.length} operations, processing only ${maxOperations} output schemas for memory optimization`);
+    }
 
-        // Transform the schema to apply defaults when selection is empty or undefined
-        const schemaWithDefaults = selectionSchema.transform((value) => {
-            // If value is undefined, null, or empty object, use defaults
-            if (!value || (typeof value === 'object' && Object.keys(value).length === 0)) {
-                return defaultSelection;
-            }
-            return value;
-        });
+    for (const operation of operationsToProcess) {
+        try {
+            const returnType = operation.field.type;
+            const selectionSchema = graphqlOutputTypeToZodSelectionSchema(returnType, schema, new Set(), 0, options);
 
-        outputSchemas[operation.name] = schemaWithDefaults;
+            // Create default selection for first-layer scalar/enum fields
+            const defaultSelection = createDefaultSelection(returnType);
+
+            // Transform the schema to apply defaults when selection is empty or undefined
+            const schemaWithDefaults = selectionSchema.transform((value) => {
+                // If value is undefined, null, or empty object, use defaults
+                if (!value || (typeof value === 'object' && Object.keys(value).length === 0)) {
+                    return defaultSelection;
+                }
+                return value;
+            });
+
+            outputSchemas[operation.name] = schemaWithDefaults;
+        } catch (error) {
+            console.warn(`Error generating output schema for ${operation.name}:`, error);
+            // Provide a fallback schema
+            outputSchemas[operation.name] = z.object({}).optional();
+        }
     }
 
     return outputSchemas;
