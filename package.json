@@ -1,6 +1,6 @@
 {
   "name": "graphql-mcp-bridge",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A bridge implementation connecting GraphQL APIs with the Model Context Protocol (MCP), enabling seamless integration between GraphQL services and MCP-compatible AI systems",
   "keywords": [
     "graphql",
