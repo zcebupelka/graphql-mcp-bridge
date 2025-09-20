@@ -92,6 +92,7 @@ PLATFORMS
 DEPENDENCIES
   jekyll (~> 4.4.1)
   just-the-docs (= 0.10.1)
+  webrick (~> 1.7)
 
 BUNDLED WITH
    2.5.9
