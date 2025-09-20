@@ -7,5 +7,9 @@ url: https://pshaddel.github.io/graphql-mcp-bridge
 # Use README.md as the homepage
 readme_index: true
 
+# Enable table of contents
+# Generate TOC for headings level 2 and 3
+heading_anchors: true
+
 aux_links:
   GitHub Repository: https://github.com/pshaddel/graphql-mcp-bridge

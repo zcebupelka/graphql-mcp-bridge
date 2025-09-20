@@ -4,9 +4,12 @@ title: Home
 nav_order: 1
 description: "A powerful bridge implementation connecting GraphQL APIs with the Model Context Protocol"
 permalink: /
+has_toc: true
 ---
 
 # GraphQL MCP Bridge
+{: .no_toc }
+
 <!-- markdownlint-disable MD033 -->
 [![CI](https://github.com/pshaddel/graphql-mcp-bridge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pshaddel/graphql-mcp-bridge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-ISC-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -24,6 +27,12 @@ A powerful bridge implementation connecting GraphQL APIs with the Model Context 
 <img width="80%" alt="Screenshot 2025-09-14 at 01 04 08" src="https://github.com/user-attachments/assets/33b5f7d5-e93e-4ed3-b3e8-472f2441b95b#gh-dark-mode-only" />
 <img width="80%" alt="Screenshot 2025-09-14 at 01 02 40" src="https://github.com/user-attachments/assets/836dc4a4-cedd-4b3c-abcd-8eb4d35dadd4#gh-light-mode-only" />
 </div>
+
+## Table of Contents
+{: .no_toc .text-delta }
+
+1. TOC
+{:toc}
 
 ## Features
 
