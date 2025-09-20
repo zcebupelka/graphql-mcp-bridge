@@ -1,12 +1,16 @@
 name: Publish Package
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
     branches: [main]
 
 jobs:
   check-version:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     outputs:
       version-changed: ${{ steps.version-check.outputs.changed }}
       version: ${{ steps.version-check.outputs.version }}
