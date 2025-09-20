@@ -7,38 +7,29 @@ url: https://pshaddel.github.io/graphql-mcp-bridge
 # Use README.md as the homepage
 readme_index: true
 
-# Enable table of contents
-# Generate TOC for headings level 2 and 3
+# Enable table of contents and heading anchors
 heading_anchors: true
 
-# Sidebar navigation
-nav:
-  - title: "Features"
-    url: /#features
-  - title: "Installation"
-    url: /#installation
-  - title: "Quick Start"
-    url: /#quick-start
-  - title: "Description Preservation"
-    url: /#description-preservation
-  - title: "Selective Tool Generation"
-    url: /#selective-tool-generation
-  - title: "Configuration"
-    url: /#configuration
-  - title: "Validation System"
-    url: /#validation-system
-  - title: "Memory Optimization"
-    url: /#memory-optimization-for-large-schemas
-  - title: "Advanced Usage"
-    url: /#advanced-usage-examples
-  - title: "API Reference"
-    url: /#api-reference
-  - title: "Error Handling"
-    url: /#error-handling
-  - title: "Supported Features"
-    url: /#supported-graphql-features
-  - title: "Development"
-    url: /#development
+# Just the Docs theme configuration
+# Enable search
+search_enabled: true
 
+# Enable copy code button
+enable_copy_code_button: true
+
+# Navigation footer
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/pshaddel/graphql-mcp-bridge"
+gh_edit_branch: "main"
+
+# Back to top link
+back_to_top: true
+back_to_top_text: "Back to top"
+
+# Footer content
+footer_content: "Copyright &copy; 2025. Distributed by an <a href=\"https://github.com/pshaddel/graphql-mcp-bridge/tree/main/LICENSE\">MIT license.</a>"
+
+# External links
 aux_links:
   GitHub Repository: https://github.com/pshaddel/graphql-mcp-bridge
