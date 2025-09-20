@@ -1,0 +1,11 @@
+title: GraphQL MCP Bridge
+description: A TypeScript library for bridging GraphQL schemas with Model Context Protocol servers
+theme: just-the-docs
+
+url: https://pshaddel.github.io/graphql-mcp-bridge
+
+# Use README.md as the homepage
+readme_index: true
+
+aux_links:
+  GitHub Repository: https://github.com/pshaddel/graphql-mcp-bridge

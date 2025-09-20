@@ -1,3 +1,11 @@
+---
+layout: default
+title: Home
+nav_order: 1
+description: "A powerful bridge implementation connecting GraphQL APIs with the Model Context Protocol"
+permalink: /
+---
+
 # GraphQL MCP Bridge
 <!-- markdownlint-disable MD033 -->
 [![CI](https://github.com/pshaddel/graphql-mcp-bridge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pshaddel/graphql-mcp-bridge/actions/workflows/ci.yml)
