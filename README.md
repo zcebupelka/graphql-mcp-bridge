@@ -4,7 +4,6 @@ title: Home
 nav_order: 1
 description: "A powerful bridge implementation connecting GraphQL APIs with the Model Context Protocol"
 permalink: /
-has_toc: true
 ---
 
 # GraphQL MCP Bridge

@@ -11,5 +11,34 @@ readme_index: true
 # Generate TOC for headings level 2 and 3
 heading_anchors: true
 
+# Sidebar navigation
+nav:
+  - title: "Features"
+    url: /#features
+  - title: "Installation"
+    url: /#installation
+  - title: "Quick Start"
+    url: /#quick-start
+  - title: "Description Preservation"
+    url: /#description-preservation
+  - title: "Selective Tool Generation"
+    url: /#selective-tool-generation
+  - title: "Configuration"
+    url: /#configuration
+  - title: "Validation System"
+    url: /#validation-system
+  - title: "Memory Optimization"
+    url: /#memory-optimization-for-large-schemas
+  - title: "Advanced Usage"
+    url: /#advanced-usage-examples
+  - title: "API Reference"
+    url: /#api-reference
+  - title: "Error Handling"
+    url: /#error-handling
+  - title: "Supported Features"
+    url: /#supported-graphql-features
+  - title: "Development"
+    url: /#development
+
 aux_links:
   GitHub Repository: https://github.com/pshaddel/graphql-mcp-bridge
