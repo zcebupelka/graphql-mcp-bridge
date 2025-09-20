@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [ main ]
 
+
 # Permissions for the entire workflow
 permissions:
   contents: write  # Required for: checkout, creating git tags
