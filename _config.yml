@@ -4,6 +4,10 @@ theme: just-the-docs
 
 url: https://pshaddel.github.io/graphql-mcp-bridge
 
+# Exclude files from Jekyll processing
+exclude:
+  - README-old.md
+
 # Just the Docs theme configuration
 # Enable search
 search_enabled: true

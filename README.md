@@ -100,11 +100,13 @@ console.log(result.query);
 
 ### 📚 Complete Documentation
 
-- **[Getting Started](docs/getting-started.md)** - Installation, quick start, and basic usage examples
-- **[Configuration](docs/configuration.md)** - Comprehensive configuration options and customization
-- **[Validation System](docs/validation.md)** - Input validation, output validation, and error handling
-- **[Advanced Usage](docs/advanced-usage.md)** - Complex examples, integration patterns, and advanced features
-- **[Optimization Guide](docs/optimization.md)** - Memory optimization and performance tips for large schemas
+- **[Getting Started](https://pshaddel.github.io/graphql-mcp-bridge/docs/getting-started.html)** - Installation, quick start, and basic usage examples
+- **[Configuration](https://pshaddel.github.io/graphql-mcp-bridge/docs/configuration.html)** - Comprehensive configuration options and customization
+- **[Validation System](https://pshaddel.github.io/graphql-mcp-bridge/docs/validation.html)** - Input validation, output validation, and error handling
+- **[Advanced Usage](https://pshaddel.github.io/graphql-mcp-bridge/docs/advanced-usage.html)** - Complex examples, integration patterns, and advanced features
+- **[Optimization Guide](https://pshaddel.github.io/graphql-mcp-bridge/docs/optimization.html)** - Memory optimization and performance tips for large schemas
+
+> 📖 **Alternative Access**: If the links above don't work, you can also browse the documentation files directly in the [`docs/` folder](https://github.com/pshaddel/graphql-mcp-bridge/tree/main/docs) on GitHub.
 
 ### 🚀 Key Topics
 
