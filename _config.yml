@@ -4,15 +4,21 @@ theme: just-the-docs
 
 url: https://pshaddel.github.io/graphql-mcp-bridge
 
-# Enable table of contents and heading anchors
-heading_anchors: true
-
 # Just the Docs theme configuration
 # Enable search
 search_enabled: true
 
 # Enable copy code button
 enable_copy_code_button: true
+
+# Show page outline in navigation
+nav_external_links:
+  - title: GitHub Repository
+    url: https://github.com/pshaddel/graphql-mcp-bridge
+
+# Enable heading anchors and navigation
+heading_anchors: true
+nav_fold: true
 
 # Navigation footer
 gh_edit_link: true
@@ -26,7 +32,3 @@ back_to_top_text: "Back to top"
 
 # Footer content
 footer_content: "Copyright &copy; 2025. Distributed by an <a href=\"https://github.com/pshaddel/graphql-mcp-bridge/tree/main/LICENSE\">MIT license.</a>"
-
-# External links
-aux_links:
-  GitHub Repository: https://github.com/pshaddel/graphql-mcp-bridge
