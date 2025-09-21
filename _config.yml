@@ -4,9 +4,6 @@ theme: just-the-docs
 
 url: https://pshaddel.github.io/graphql-mcp-bridge
 
-# Use README.md as the homepage
-readme_index: true
-
 # Enable table of contents and heading anchors
 heading_anchors: true
 
